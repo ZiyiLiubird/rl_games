@@ -35,12 +35,7 @@ Implemented in Pytorch:
 * Masked actions support
 * Multi-agent training, decentralized and centralized critic variants
 * Self-play 
-
- Implemented in Tensorflow 1.x (was removed in this version):
-
-* Rainbow DQN
-* A2C
-* PPO
+* population-based training
 
 ## Quickstart: Colab in the Cloud
 
