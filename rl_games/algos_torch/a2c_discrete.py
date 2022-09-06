@@ -11,12 +11,19 @@ import torch
 from torch import nn
 import numpy as np
 import gym
+import yaml
+import os
+
+def save_config(args, save_path):
+    file = open(os.path.join(str(save_path), 'config.yaml'), mode='w', encoding='utf-8')
+    yaml.dump(args, file)
+    file.close()
 
 class DiscreteA2CAgent(a2c_common.DiscreteA2CBase):
     def __init__(self, base_name, params):
         a2c_common.DiscreteA2CBase.__init__(self, base_name, params)
         obs_shape = self.obs_shape
-        
+        save_config(params, self.experiment_dir)
         config = {
             'actions_num' : self.actions_num,
             'input_shape' : obs_shape,

@@ -162,6 +162,11 @@ def create_roboschool_env(name):
     import roboschool
     return gym.make(name)
 
+def create_sts2(**kwargs):
+    from rl_games.envs.sts2_env import STSEnv
+    env = STSEnv(**kwargs)
+    return env
+
 def create_smac(name, **kwargs):
     from rl_games.envs.smac_env import SMACEnv
     frames = kwargs.pop('frames', 1)
@@ -361,6 +366,10 @@ configurations = {
     },
     'smac_cnn' : {
         'env_creator' : lambda **kwargs : create_smac_cnn(**kwargs),
+        'vecenv_type' : 'RAY'
+    },
+    'sts2': {
+        'env_creator' : lambda **kwargs : create_sts2(**kwargs),
         'vecenv_type' : 'RAY'
     },
     'dm_control' : {

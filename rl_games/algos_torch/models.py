@@ -1,3 +1,4 @@
+from turtle import forward
 import rl_games.algos_torch.layers
 import numpy as np
 import torch.nn as nn
@@ -77,7 +78,9 @@ class ModelA2C(BaseModel):
             is_train = input_dict.get('is_train', True)
             action_masks = input_dict.get('action_masks', None)
             prev_actions = input_dict.get('prev_actions', None)
+            # print(f"obs before: {input_dict['obs'].shape}")
             input_dict['obs'] = self.norm_obs(input_dict['obs'])
+            # print(f"obs after: {input_dict['obs'].shape}")
             logits, value, states = self.a2c_network(input_dict)
 
             if is_train:
@@ -105,6 +108,22 @@ class ModelA2C(BaseModel):
                 }
                 return  result
 
+class ModelDQN(BaseModel):
+    def __init__(self, network):
+        BaseModel.__init__(self, 'dqn')
+        self.network_builder = network
+
+    class Network(BaseModelNetwork):
+        def __init__(self, dqn_network, **kwargs):
+            self.dqn_network = dqn_network
+        
+        def is_rnn(self):
+            return False
+
+        def forward(self, input_dict):
+            pass
+
+
 class ModelA2CMultiDiscrete(BaseModel):
     def __init__(self, network):
         BaseModel.__init__(self, 'a2c')
@@ -117,7 +136,7 @@ class ModelA2CMultiDiscrete(BaseModel):
 
         def is_rnn(self):
             return self.a2c_network.is_rnn()
-        
+
         def get_default_rnn_state(self):
             return self.a2c_network.get_default_rnn_state()
 
@@ -155,7 +174,7 @@ class ModelA2CMultiDiscrete(BaseModel):
                     categorical = [Categorical(logits=logit) for logit in logits]
                 else:   
                     categorical = [CategoricalMasked(logits=logit, masks=mask) for logit, mask in zip(logits, action_masks)]                
-                
+
                 selected_action = [c.sample().long() for c in categorical]
                 neglogp = [-c.log_prob(a.squeeze()) for c,a in zip(categorical, selected_action)]
                 selected_action = torch.stack(selected_action, dim=-1)
