@@ -138,6 +138,8 @@ class PpoPlayerDiscrete(BasePlayer):
                 return action.squeeze().detach()
 
     def get_action(self, obs, is_deterministic = False):
+        batch_size = 1
+        batch_size = self.get_batch_size(obs, batch_size=batch_size)
         if self.has_batch_dimension == False:
             obs = unsqueeze_obs(obs)
         obs = self._preproc_obs(obs)

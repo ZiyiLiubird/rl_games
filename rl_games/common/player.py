@@ -51,6 +51,7 @@ class BasePlayer(object):
         self.render_sleep = self.player_config.get('render_sleep', 0.002)
         self.max_steps = 108000 // 4
         self.device = torch.device(self.device_name)
+        print(f"player device: {self.device}")
 
     def load_networks(self, params):
         builder = model_builder.ModelBuilder()

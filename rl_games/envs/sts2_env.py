@@ -78,3 +78,6 @@ class STSEnv(Env):
 
     def get_number_of_agents(self):
         return self.num_agents
+
+    def update_weights(self, weigths):
+        self.agent.set_weights(weigths)

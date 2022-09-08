@@ -19,11 +19,11 @@ params:
         name: 'orthogonal_initializer'
       regularizer:
         name:  'None'
-    rnn:
-      name: lstm
-      units: 128
-      layers: 1
-      layer_norm: True
+    # rnn:
+    #   name: lstm
+    #   units: 128
+    #   layers: 1
+    #   layer_norm: True
 
   config:
     name: sts2
@@ -56,14 +56,14 @@ params:
     max_epochs: 50000
 
     self_play_config:
-      update_score: 1
-      games_to_check: 200
+      update_score: -1
+      games_to_check: 1
       check_scores : False
 
     env_config:
       name: sts2
       #neg_scale: 1 #0.5
-      self_play: False #True
+      self_play: True
       config_path: 'rl_games/configs/ma/ppo_sts2_self_play.yaml'
       apply_agent_ids: True
       central_value: False
