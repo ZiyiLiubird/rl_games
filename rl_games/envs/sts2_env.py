@@ -20,37 +20,19 @@ class STSEnv(Env):
             one_hot_agents = self.num_agents
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.obs_dim+one_hot_agents, ), dtype=np.float32) # or Dict
         self.state_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim, ), dtype=np.float32) # or Dict
-        self.agent = None
         self.config_path = kwargs.pop('config_path')
         self.is_deterministic = kwargs.pop('is_deterministic', False)
 
     def reset(self):
-        if self.agent == None and self.self_play:
-            self.create_agent(self.config_path)
         obs_dict = self.reset0()
         self.sum_rewards = 0
-        obs, obs_op = self._preproc_obs(obs_dict['obs'], obs_dict['obs_op'])
-        self.opponent_obs = obs_op
-        return obs
-
-    def create_agent(self, config='rl_games/configs/ma/ppo_sts2_self_play.yaml'):
-        with open(config, 'r') as stream:
-            config = yaml.safe_load(stream)
-            runner = Runner()
-            from rl_games.common.env_configurations import get_env_info
-            config['params']['config']['env_info'] = get_env_info(self)
-            runner.load(config)
-
-        'RAYLIB has bug here, CUDA_VISIBLE_DEVICES become unset'
-        os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
-        self.agent = runner.create_player()
+        obs_dict['obs'], obs_dict['obs_op'] = self._preproc_obs(obs_dict['obs'], obs_dict['obs_op'])
+        return obs_dict
 
     def step(self, action):
         if self.self_play:
-            op_obs = self.agent.obs_to_torch(self.opponent_obs)
-            opponent_action = self.agent.get_action(op_obs, self.is_deterministic).detach().cpu().numpy()
-            actions_int = [action, opponent_action]
+            ego_action, opponent_action = action[0], action[1]
+            actions_int = [ego_action, opponent_action]
         else:
             actions_int = action
 
@@ -59,8 +41,7 @@ class STSEnv(Env):
         self.sum_rewards += reward
         # if reward < 0:
         #     reward = reward * self.neg_scale
-        obs, obs_op = self._preproc_obs(obs_dict['obs'], obs_dict['obs_op'])
-        self.opponent_obs = obs_op
+        obs_dict['obs'], obs_dict['obs_op'] = self._preproc_obs(obs_dict['obs'], obs_dict['obs_op'])
         if done:
             info['battle_won'] = np.sign(self.sum_rewards)
         reward_team = [reward] * self.num_agents
@@ -68,7 +49,7 @@ class STSEnv(Env):
         done_team = [done] * self.num_agents
         done_team = np.stack(done_team)
 
-        return obs, reward_team, done_team, info
+        return obs_dict, reward_team, done_team, info
 
     def render(self, mode=None):
         self.env.render()
@@ -78,6 +59,3 @@ class STSEnv(Env):
 
     def get_number_of_agents(self):
         return self.num_agents
-
-    def update_weights(self, weigths):
-        self.agent.set_weights(weigths)

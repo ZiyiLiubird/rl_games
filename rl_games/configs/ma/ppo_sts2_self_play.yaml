@@ -54,11 +54,13 @@ params:
     normalize_value: False
     seq_length: 5
     max_epochs: 50000
+    self_play: True
 
     self_play_config:
       update_score: -1
       games_to_check: 1
       check_scores : False
+      # op_load_path: False
 
     env_config:
       name: sts2

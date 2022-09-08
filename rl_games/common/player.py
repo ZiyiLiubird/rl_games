@@ -52,6 +52,7 @@ class BasePlayer(object):
         self.max_steps = 108000 // 4
         self.device = torch.device(self.device_name)
         print(f"player device: {self.device}")
+        print(f"plauer device cuda available: {torch.cuda.is_available()}")
 
     def load_networks(self, params):
         builder = model_builder.ModelBuilder()

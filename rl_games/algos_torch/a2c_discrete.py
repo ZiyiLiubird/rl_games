@@ -13,6 +13,7 @@ import numpy as np
 import gym
 import yaml
 import os
+import copy
 
 def save_config(args, save_path):
     file = open(os.path.join(str(save_path), 'config.yaml'), mode='w', encoding='utf-8')
@@ -32,7 +33,7 @@ class DiscreteA2CAgent(a2c_common.DiscreteA2CBase):
             'normalize_value': self.normalize_value,
             'normalize_input': self.normalize_input,
         }
-
+        self.base_model_config = config
         self.model = self.network.build(config)
         self.model.to(self.ppo_device)
         self.init_rnn_from_model(self.model)
