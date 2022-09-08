@@ -34,9 +34,9 @@ params:
     env_name: slime_gym
     e_clip: 0.2
     clip_value: True
-    num_actors: 8
+    num_actors: 2
     horizon_length: 512
-    minibatch_size: 2048
+    minibatch_size: 512
     mini_epochs: 4
     critic_coef: 1
     lr_schedule:  None
@@ -50,7 +50,7 @@ params:
       check_scores : False
 
     env_config:
-      name: SlimeVolleyDiscrete-v0
+      name: SlimeVolleyNoFrameskip-v0
       #neg_scale: 1 #0.5
       self_play: True
       config_path: 'rl_games/configs/ma/ppo_slime_self_play.yaml'

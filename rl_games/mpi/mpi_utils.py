@@ -71,6 +71,26 @@ class MPI_Tool(object):
             bdata = data
         return bdata
 
+    def Isend(self, data, dest, tag=0):
+        if MPI_INSTALLED:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_comm.Isend(data, dest=dest, tag=tag)
+
+    def Irecv(self, data, source, tag=0):
+        if MPI_INSTALLED:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_comm.Irecv(data, source=source, tag=tag)
+
+    def isend(self, data, dest, tag=0):
+        if MPI_INSTALLED:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_comm.isend(data, dest=dest, tag=tag)
+
+    def irecv(self, data, source, tag=0):
+        if MPI_INSTALLED:
+            mpi_comm = MPI.COMM_WORLD
+            mpi_comm.irecv(data, source=source, tag=tag)
+
     def sendrecv(self, data, dest, source):
         ''' SendRecv data to MPI processes
         :param data: Data to be broadcasted

@@ -643,7 +643,12 @@ class A2CBase(BaseAlgorithm):
 
             shaped_rewards = self.rewards_shaper(rewards)
             # print(f"infos: {infos}")
-            win_rate = infos['win_rate'] if type(infos) == dict else infos[0]['win_rate']
+            if type(infos) == dict and "win_rate" in infos.keys():
+                win_rate = infos['win_rate']
+            elif type(infos[0]) == dict and "win_rate" in infos[0].keys():
+                win_rate = infos[0]['win_rate']
+            else:
+                win_rate = 0
             if self.value_bootstrap and 'time_outs' in infos:
                 shaped_rewards += self.gamma * res_dict['values'] * self.cast_obs(infos['time_outs']).unsqueeze(1).float()
 
@@ -768,7 +773,6 @@ class DiscreteA2CBase(A2CBase):
         A2CBase.__init__(self, base_name, params)
         batch_size = self.num_agents * self.num_actors
         action_space = self.env_info['action_space']
-        print(f"action_space {action_space}")
         if type(action_space) is gym.spaces.Discrete:
             self.actions_shape = (self.horizon_length, batch_size)
             self.actions_num = action_space.n
