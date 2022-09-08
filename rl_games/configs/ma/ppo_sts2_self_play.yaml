@@ -19,11 +19,11 @@ params:
         name: 'orthogonal_initializer'
       regularizer:
         name:  'None'
-    # rnn:
-    #   name: lstm
-    #   units: 128
-    #   layers: 1
-    #   layer_norm: True
+    rnn:
+      name: lstm
+      units: 128
+      layers: 1
+      layer_norm: True
 
   config:
     name: sts2
