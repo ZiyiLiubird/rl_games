@@ -11,12 +11,19 @@ import torch
 from torch import nn
 import numpy as np
 import gym
+import yaml
+import os
+
+def save_config(args, save_path):
+    file = open(os.path.join(str(save_path), 'config.yaml'), mode='w', encoding='utf-8')
+    yaml.dump(args, file)
+    file.close()
 
 class DiscreteA2CAgent(a2c_common.DiscreteA2CBase):
     def __init__(self, base_name, params):
         a2c_common.DiscreteA2CBase.__init__(self, base_name, params)
         obs_shape = self.obs_shape
-        
+        save_config(params, self.experiment_dir)
         config = {
             'actions_num' : self.actions_num,
             'input_shape' : obs_shape,
@@ -25,7 +32,7 @@ class DiscreteA2CAgent(a2c_common.DiscreteA2CBase):
             'normalize_value': self.normalize_value,
             'normalize_input': self.normalize_input,
         }
-
+        self.base_model_config = config
         self.model = self.network.build(config)
         self.model.to(self.ppo_device)
         self.init_rnn_from_model(self.model)
@@ -177,4 +184,3 @@ class DiscreteA2CAgent(a2c_common.DiscreteA2CBase):
         }, curr_e_clip, 0) 
 
         self.train_result = (a_loss, c_loss, entropy, kl_dist,self.last_lr, lr_mul)
-
