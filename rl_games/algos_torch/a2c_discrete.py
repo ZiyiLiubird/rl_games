@@ -16,7 +16,7 @@ class DiscreteA2CAgent(a2c_common.DiscreteA2CBase):
     def __init__(self, base_name, params):
         a2c_common.DiscreteA2CBase.__init__(self, base_name, params)
         obs_shape = self.obs_shape
-        
+
         config = {
             'actions_num' : self.actions_num,
             'input_shape' : obs_shape,

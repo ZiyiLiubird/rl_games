@@ -38,7 +38,7 @@ Implemented in Pytorch:
 News:
 
 * Self-play with cooperative agents
-* population-based training
+* Population-based training
 
 ## Quickstart: Colab in the Cloud
 
