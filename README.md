@@ -34,7 +34,10 @@ Implemented in Pytorch:
 * Support of end-to-end GPU accelerated training pipeline with Isaac Gym and Brax
 * Masked actions support
 * Multi-agent training, decentralized and centralized critic variants
-* Self-play 
+
+News:
+
+* Self-play with cooperative agents
 * population-based training
 
 ## Quickstart: Colab in the Cloud
