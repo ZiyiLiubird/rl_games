@@ -125,41 +125,44 @@ class SPRayVecEnv(IVecEnv):
             self.concat_func = np.concatenate
 
     def step(self, actions):
-        newobs, newstates, newrewards, newdones, newinfos = [], [], [], [], []
+        newobs, newobs_op, newstates, newrewards, newdones, newinfos = [], [], [], [], [], []
+        ego_actions, op_actions = actions
         res_obs = []
         if self.num_agents == 1:
-            for (action, worker) in zip(actions, self.workers):	        
-                res_obs.append(worker.step.remote(action))
+            for (ego_action, op_action, worker) in zip(ego_actions, op_actions, self.workers):	        
+                res_obs.append(worker.step.remote([ego_action, op_action]))
         else:
             for num, worker in enumerate(self.workers):
-                res_obs.append(worker.step.remote(actions[self.num_agents * num: self.num_agents * num + self.num_agents]))
+                actions_per_env = []
+                actions_per_env.append(ego_actions[self.num_agents * num: self.num_agents * num + self.num_agents])
+                actions_per_env.append(op_actions[self.num_agents * num: self.num_agents * num + self.num_agents])
+                res_obs.append(worker.step.remote(actions_per_env))
 
         all_res = ray.get(res_obs)
         for res in all_res:
             cobs, crewards, cdones, cinfos = res
             if self.use_global_obs:
                 newobs.append(cobs["obs"])
+                newobs_op.append(cobs['obs_op'])
                 newstates.append(cobs["state"])
             else:
-                newobs.append(cobs)
+                newobs.append(cobs['obs'])
+                newobs_op.append(cobs['obs_op'])
+
             newrewards.append(crewards)
             newdones.append(cdones)
             newinfos.append(cinfos)
 
-        if self.obs_type_dict:
-            ret_obs = dicts_to_dict_with_arrays(newobs, self.num_agents == 1)
-        else:
-            ret_obs = self.concat_func(newobs)
+        newobsdict = {}
+        newobsdict["obs"] = self.concat_func(newobs)
+        newobsdict["obs_op"] = self.concat_func(newobs_op)
 
         if self.use_global_obs:
-            newobsdict = {}
-            newobsdict["obs"] = ret_obs
-            
             if self.state_type_dict:
                 newobsdict["states"] = dicts_to_dict_with_arrays(newstates, True)
             else:
-                newobsdict["states"] = np.stack(newstates)            
-            ret_obs = newobsdict
+                newobsdict["states"] = np.stack(newstates)          
+        ret_obs = newobsdict
         if self.concat_infos:
             newinfos = dicts_to_dict_with_arrays(newinfos, False)
         return ret_obs, self.concat_func(newrewards), self.concat_func(newdones), newinfos
@@ -167,12 +170,6 @@ class SPRayVecEnv(IVecEnv):
     def get_env_info(self):
         res = self.workers[0].get_env_info.remote()
         return ray.get(res)
-
-    def set_weights(self, indices, weights):
-        res = []
-        for ind in indices:
-            res.append(self.workers[ind].set_weights.remote(weights))
-        ray.get(res)
 
     def has_action_masks(self):
         return True
@@ -184,27 +181,23 @@ class SPRayVecEnv(IVecEnv):
 
     def reset(self):
         res_obs = [worker.reset.remote() for worker in self.workers]
-        newobs, newstates = [],[]
+        newobs, newobs_op, newstates = [], [], []
         for res in res_obs:
             cobs = ray.get(res)
             if self.use_global_obs:
-                newobs.append(cobs["obs"])
                 newstates.append(cobs["state"])
-            else:
-                newobs.append(cobs)
+            newobs.append(cobs["obs"])
+            newobs_op.append(cobs['obs_op'])
 
-        if self.obs_type_dict:
-            ret_obs = dicts_to_dict_with_arrays(newobs, self.num_agents == 1)
-        else:
-            ret_obs = self.concat_func(newobs)
+        newobsdict = {}
+        newobsdict["obs"] = self.concat_func(newobs)
+        newobsdict["obs_op"] = self.concat_func(newobs_op)
 
-        if self.use_global_obs:
-            newobsdict = {}
-            newobsdict["obs"] = ret_obs
-            
+        if self.use_global_obs:            
             if self.state_type_dict:
                 newobsdict["states"] = dicts_to_dict_with_arrays(newstates, True)
             else:
-                newobsdict["states"] = np.stack(newstates)            
-            ret_obs = newobsdict
+                newobsdict["states"] = np.stack(newstates)      
+      
+        ret_obs = newobsdict
         return ret_obs
