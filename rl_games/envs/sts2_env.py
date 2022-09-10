@@ -27,7 +27,10 @@ class STSEnv(Env):
         obs_dict = self.reset0()
         self.sum_rewards = 0
         obs_dict['obs'], obs_dict['obs_op'] = self._preproc_obs(obs_dict['obs'], obs_dict['obs_op'])
-        return obs_dict
+        if self.self_play:
+            return obs_dict
+        else:
+            return obs_dict['obs']
 
     def step(self, action):
         if self.self_play:
@@ -49,7 +52,10 @@ class STSEnv(Env):
         done_team = [done] * self.num_agents
         done_team = np.stack(done_team)
 
-        return obs_dict, reward_team, done_team, info
+        if self.self_play:
+            return obs_dict, reward_team, done_team, info
+        else:
+            return obs_dict['obs'], reward_team, done_team, info
 
     def render(self, mode=None):
         self.env.render()
