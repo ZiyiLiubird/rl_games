@@ -9,7 +9,7 @@ params:
     name: actor_critic
     separate: True
     #normalization: layer_norm
-    space: 
+    space:
       discrete:
 
     mlp:
@@ -20,10 +20,12 @@ params:
       regularizer:
         name:  'None'
     # rnn:
-    #   name: lstm
+    #   name: lstm # gru
     #   units: 128
     #   layers: 1
     #   layer_norm: True
+    #   before_mlp: False
+    #   concat_input: False
 
   config:
     name: sts2_sp

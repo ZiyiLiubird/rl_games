@@ -727,7 +727,12 @@ class A2CBase(BaseAlgorithm):
 
             if self.value_bootstrap and 'time_outs' in infos:
                 shaped_rewards += self.gamma * res_dict['values'] * self.cast_obs(infos['time_outs']).unsqueeze(1).float()
-            win_rate = infos.get('win_rate', -1)
+            if type(infos) == dict and "win_rate" in infos.keys():
+                win_rate = infos['win_rate']
+            elif type(infos[0]) == dict and "win_rate" in infos[0].keys():
+                win_rate = infos[0]['win_rate']
+            else:
+                win_rate = 0
 
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
 

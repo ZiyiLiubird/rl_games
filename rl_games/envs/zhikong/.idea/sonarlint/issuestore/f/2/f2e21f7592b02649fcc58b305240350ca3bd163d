@@ -1,0 +1,12 @@
+
+Jpython:S1481"-Remove the unused local variable "init_flag".(¬ÕÅïıÿÿÿÿ
+Epython:S1481 "-Remove the unused local variable "init_flag".(èõû
+Jpython:S1481#"-Remove the unused local variable "init_flag".(™ö²œıÿÿÿÿ
+Tpython:S5754)"<Specify an exception class to catch or reraise the exception(ˆÊÉ·
+Tpython:S5754/"<Specify an exception class to catch or reraise the exception(ˆÊÉ·
+tpython:S117S"XRename this local variable "blueNum" to match the regular expression ^[_a-z][a-z0-9_]*$.(–¸šõûÿÿÿÿ
+spython:S117U"\Rename this local variable "m_TargetNum" to match the regular expression ^[_a-z][a-z0-9_]*$.(ÙÙÁ£
+xpython:S117T"\Rename this local variable "red_Fighter" to match the regular expression ^[_a-z][a-z0-9_]*$.(ºÜÎüÿÿÿÿ
+spython:S117c"\Rename this local variable "m_TargetNum" to match the regular expression ^[_a-z][a-z0-9_]*$.(ÙÙÁ£
+npython:S117a"WRename this local variable "redNum" to match the regular expression ^[_a-z][a-z0-9_]*$.(´Èã­
+spython:S117b"\Rename this local variable "red_Fighter" to match the regular expression ^[_a-z][a-z0-9_]*$.(ãÉƒè

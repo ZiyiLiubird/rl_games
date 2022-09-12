@@ -16,7 +16,7 @@ from rl_games.algos_torch import model_builder
 from rl_games.algos_torch import a2c_continuous
 from rl_games.algos_torch import a2c_discrete
 from .algos_torch import a2c_pfsp_agent
-from .algos_torch import ppo_sp_player
+from .algos_torch import a2c_pfsp_player
 from rl_games.algos_torch import players
 from rl_games.common.algo_observer import DefaultAlgoObserver
 from rl_games.algos_torch import sac_agent
@@ -49,7 +49,7 @@ class Runner:
         self.player_factory.register_builder('a2c_continuous', lambda **kwargs : players.PpoPlayerContinuous(**kwargs))
         self.player_factory.register_builder('a2c_discrete', lambda **kwargs : players.PpoPlayerDiscrete(**kwargs))
         self.player_factory.register_builder('sac', lambda **kwargs : players.SACPlayer(**kwargs))
-        self.player_factory.register_builder('pfsp', lambda **kwargs : ppo_sp_player.SPPlayer(**kwargs))
+        self.player_factory.register_builder('pfsp', lambda **kwargs : a2c_pfsp_player.SPPlayer(**kwargs))
 
         self.algo_observer = algo_observer if algo_observer else DefaultAlgoObserver()
         torch.backends.cudnn.benchmark = True
