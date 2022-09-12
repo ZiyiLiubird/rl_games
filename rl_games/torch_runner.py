@@ -15,6 +15,8 @@ from rl_games.common import tr_helpers
 from rl_games.algos_torch import model_builder
 from rl_games.algos_torch import a2c_continuous
 from rl_games.algos_torch import a2c_discrete
+from .algos_torch import a2c_pfsp_agent
+from .algos_torch import ppo_sp_player
 from rl_games.algos_torch import players
 from rl_games.common.algo_observer import DefaultAlgoObserver
 from rl_games.algos_torch import sac_agent
@@ -33,25 +35,28 @@ def _override_sigma(agent, args):
                     net.sigma.fill_(float(args['sigma']))
             else:
                 print('Print cannot set new sigma because fixed_sigma is False')
+
+
 class Runner:
     def __init__(self, algo_observer=None):
         self.algo_factory = object_factory.ObjectFactory()
         self.algo_factory.register_builder('a2c_continuous', lambda **kwargs : a2c_continuous.A2CAgent(**kwargs))
         self.algo_factory.register_builder('a2c_discrete', lambda **kwargs : a2c_discrete.DiscreteA2CAgent(**kwargs)) 
         self.algo_factory.register_builder('sac', lambda **kwargs: sac_agent.SACAgent(**kwargs))
-        #self.algo_factory.register_builder('dqn', lambda **kwargs : dqnagent.DQNAgent(**kwargs))
+        self.algo_factory.register_builder('pfsp', lambda **kwargs : a2c_pfsp_agent.PFSPAgent(**kwargs))
 
         self.player_factory = object_factory.ObjectFactory()
         self.player_factory.register_builder('a2c_continuous', lambda **kwargs : players.PpoPlayerContinuous(**kwargs))
         self.player_factory.register_builder('a2c_discrete', lambda **kwargs : players.PpoPlayerDiscrete(**kwargs))
         self.player_factory.register_builder('sac', lambda **kwargs : players.SACPlayer(**kwargs))
-        #self.player_factory.register_builder('dqn', lambda **kwargs : players.DQNPlayer(**kwargs))
+        self.player_factory.register_builder('pfsp', lambda **kwargs : ppo_sp_player.SPPlayer(**kwargs))
 
         self.algo_observer = algo_observer if algo_observer else DefaultAlgoObserver()
         torch.backends.cudnn.benchmark = True
         ### it didnot help for lots for openai gym envs anyway :(
         #torch.backends.cudnn.deterministic = True
         #torch.use_deterministic_algorithms(True)
+
     def reset(self):
         pass
 

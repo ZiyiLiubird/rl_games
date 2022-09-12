@@ -56,17 +56,10 @@ params:
     max_epochs: 50000
     self_play: False
 
-    # self_play_config:
-    #   update_score: -1
-    #   games_to_check: 1
-    #   check_scores : False
-    #   # op_load_path: False
-
     env_config:
       name: sts2
-      #neg_scale: 1 #0.5
       self_play: False
-      config_path: 'rl_games/configs/ma/ppo_sts2_self_play.yaml'
+      config_path: 'rl_games/configs/ma/ppo_sts2.yaml'
       apply_agent_ids: True
       central_value: False
       max_steps: 500
@@ -88,6 +81,7 @@ params:
       activate_role_reward: False
       role_reward_param_file: null
       save_frequency: 500
+
     player:
       render: False #True
       games_num: 200

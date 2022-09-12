@@ -204,7 +204,7 @@ class RayVecEnv(IVecEnv):
         if self.use_global_obs:
             newobsdict = {}
             newobsdict["obs"] = ret_obs
-            
+
             if self.state_type_dict:
                 newobsdict["states"] = dicts_to_dict_with_arrays(newstates, True)
             else:
@@ -220,6 +220,9 @@ def register(config_name, func):
 def create_vec_env(config_name, num_actors, **kwargs):
     vec_env_name = configurations[config_name]['vecenv_type']
     return vecenv_config[vec_env_name](config_name, num_actors, **kwargs)
+
+from rl_games.envs.spvecenv import SPRayVecEnv
+register('SPRAY',  lambda config_name, num_actors, **kwargs: SPRayVecEnv(config_name, num_actors, **kwargs))
 
 register('RAY', lambda config_name, num_actors, **kwargs: RayVecEnv(config_name, num_actors, **kwargs))
 

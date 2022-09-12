@@ -1,0 +1,95 @@
+params:  
+  algo:
+    name: pfsp
+
+  model:
+    name: discrete_a2c
+
+  network:
+    name: actor_critic
+    separate: True
+    #normalization: layer_norm
+    space: 
+      discrete:
+
+    mlp:
+      units: [128, 128, 64]
+      activation: elu
+      initializer:
+        name: 'orthogonal_initializer'
+      regularizer:
+        name:  'None'
+    # rnn:
+    #   name: lstm
+    #   units: 128
+    #   layers: 1
+    #   layer_norm: True
+
+  config:
+    name: sts2_sp
+    env_name: sts2_sp
+    player_pool_type: ''
+    player_pool_length: 10
+    op_load_path: False
+    max_update_steps: 5000
+    reward_shaper:
+        scale_value: 1
+    normalize_advantage: True
+    gamma: 0.99
+    tau: 0.95
+    learning_rate: 3e-4
+    score_to_win: 100
+    save_win_threshold: 0.005
+    grad_norm: 10
+    entropy_coef: 0.02
+    truncate_grads: True
+    env_name: sts2
+    e_clip: 0.2
+    clip_value: True
+    num_actors: 3
+    horizon_length: 500
+    minibatch_size: 500
+    mini_epochs: 2
+    critic_coef: 1
+    lr_schedule:  linear
+    kl_threshold: 0.05
+    games_to_track: 100
+    normalize_input: False
+    normalize_value: False
+    seq_length: 5
+    max_epochs: 50000
+    # self_play: True
+
+    env_config:
+      name: sts2_sp
+      #neg_scale: 1 #0.5
+      self_play: True
+      config_path: 'rl_games/configs/ma/ppo_sts2_sp.yaml'
+      apply_agent_ids: True
+      central_value: False
+      max_steps: 500
+      max_tick: 10000000000
+      episode_max_tick: 10000000000
+      num_agents: 3
+      num_home_players: 3
+      num_away_players: 3
+      num_home_ai_players: 0
+      num_away_ai_players: 3
+      render: False #False
+      record_game_state: False
+      dense_reward: True
+      draw_penalty: True
+      anneal_init_exp: False
+      init_exp_start: 1.0
+      init_exp_end: 2.0
+      init_exp_div: 10000
+      activate_role_reward: False
+      role_reward_param_file: null
+      save_frequency: 500
+
+    player:
+      render: False #True
+      games_num: 200
+      n_game_life: 1
+      determenistic: True
+      device_name: 'cpu'

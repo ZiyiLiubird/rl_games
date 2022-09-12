@@ -167,6 +167,13 @@ def create_sts2(**kwargs):
     env = STSEnv(**kwargs)
     return env
 
+def sts2_vecenv_type(**kwargs):
+    self_play = kwargs.get('self_play', False)
+    if self_play:
+        return 'RAY'
+    else:
+        return 'SPRAY'
+
 def create_smac(name, **kwargs):
     from rl_games.envs.smac_env import SMACEnv
     frames = kwargs.pop('frames', 1)
@@ -371,6 +378,10 @@ configurations = {
     'sts2': {
         'env_creator' : lambda **kwargs : create_sts2(**kwargs),
         'vecenv_type' : 'RAY'
+    },
+    'sts2_sp': {
+        'env_creator' : lambda **kwargs : create_sts2(**kwargs),
+        'vecenv_type' : 'SPRAY'
     },
     'dm_control' : {
         'env_creator' : lambda **kwargs : create_dm_control_env(**kwargs),

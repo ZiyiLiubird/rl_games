@@ -23,11 +23,10 @@ def save_config(args, save_path):
     file.close()
 
 
-class SPAgent(a2c_discrete.DiscreteA2CAgent):
+class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
     def __init__(self, base_name, params):
-        params['config']['device'] = params['device']
         super().__init__(base_name, params)
-        self.player_pool_type = params['player_pool_type']
+        self.player_pool_type = self.config.get('player_pool_type', '')
         self.base_model_config = {
             'actions_num': self.actions_num,
             'input_shape': self.obs_shape,
@@ -36,22 +35,22 @@ class SPAgent(a2c_discrete.DiscreteA2CAgent):
             'normalize_value': self.normalize_value,
             'normalize_input': self.normalize_input,
         }
-        self.max_his_player_num = params['player_pool_length']
+        self.max_his_player_num = self.config.get('player_pool_length', 10)
 
-        if params['op_load_path']:
+        if self.config['op_load_path']:
             self.init_op_model = self.create_model()
-            self.restore_op(params['op_load_path'])
+            self.restore_op(self.config['op_load_path'])
         else:
             self.init_op_model = self.model
         self.players_dir = os.path.join(self.experiment_dir, 'policy_dir')
         os.makedirs(self.players_dir, exist_ok=True)
         self.update_win_rate = params['update_win_rate']
-        self.num_opponent_agents = params['num_agents'] - 1
+        self.num_opponent_agents = self.num_agents
         self.player_pool = self._build_player_pool(params)
 
         self.games_to_check = params['games_to_check']
         self.now_update_steps = 0
-        self.max_update_steps = params['max_update_steps']
+        self.max_update_steps = self.config.get('max_update_steps', 5000)
         self.update_op_num = 0
         self.update_player_pool(self.init_op_model, player_idx=self.update_op_num)
         self.resample_op(torch.arange(end=self.num_actors, device=self.device, dtype=torch.long))
@@ -90,8 +89,8 @@ class SPAgent(a2c_discrete.DiscreteA2CAgent):
             if self.player_pool_type == 'multi_thread':
                 self.player_pool.thread_pool.shutdown()
             step_time_start = time.time()
-            self.obs, rewards, self.dones, infos = self.env_step(
-                torch.cat((res_dict['actions'], res_dict_op['actions']), dim=0))
+            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'], res_dict_op['actions'])
+
             step_time_end = time.time()
             step_time += (step_time_end - step_time_start)
 
@@ -134,11 +133,10 @@ class SPAgent(a2c_discrete.DiscreteA2CAgent):
         batch_dict['step_time'] = step_time
         return batch_dict
 
-    def env_step(self, actions):
-        actions = self.preprocess_actions(actions)
-        obs, rewards, dones, infos = self.vec_env.step(actions)
-        obs['obs_op'] = obs['obs'][self.num_actors:]
-        obs['obs'] = obs['obs'][:self.num_actors]
+    def env_step(self, ego_actions, op_actions):
+
+        ego_actions, op_actions = self.preprocess_actions(ego_actions), self.preprocess_actions(op_actions)
+        obs, rewards, dones, infos = self.vec_env.step([ego_actions, op_actions])
         if self.is_tensor_obses:
             if self.value_size == 1:
                 rewards = rewards.unsqueeze(1)
@@ -150,10 +148,13 @@ class SPAgent(a2c_discrete.DiscreteA2CAgent):
                 dones).to(self.ppo_device), infos
 
     def env_reset(self):
+        """
+        support n cooperative agents vs m other agents.
+        """
         obs = self.vec_env.reset()
         obs = self.obs_to_tensors(obs)
-        obs['obs_op'] = obs['obs'][self.num_actors:]
-        obs['obs'] = obs['obs'][:self.num_actors]
+        obs['obs_op'] = obs['obs'][self.num_actors*self.num_agents:]
+        obs['obs'] = obs['obs'][:self.num_actors*self.num_agents]
         return obs
 
     def train(self):
@@ -302,27 +303,47 @@ class SPAgent(a2c_discrete.DiscreteA2CAgent):
         return res_dict
 
     def resample_op(self, resample_indices):
-        for op_idx in range(self.num_opponent_agents):
-            for player in self.player_pool.players:
-                player.remove_envs(resample_indices + op_idx * self.num_actors)
-        for op_idx in range(self.num_opponent_agents):
-            for env_idx in resample_indices:
-                player = self.player_pool.sample_player()
-                player.add_envs(env_idx + op_idx * self.num_actors)
+        """
+        For each real env, player occupys num_opponents continous unreal envs.
+        """
+        for player in self.player_pool.players:
+            player.remove_envs(resample_indices)
+
+        for env_idx in resample_indices:
+            player = self.player_pool.sample_player()
+            player.add_envs(torch.arange(start=env_idx*self.num_opponent_agents, 
+                                         end=env_idx*self.num_opponent_agents+self.num_opponent_agents,
+                                         device=self.device, dtype=torch.long))
+
         for player in self.player_pool.players:
             player.reset_envs()
 
-    def resample_batch(self):
-        env_indices = torch.arange(end=self.num_actors * self.num_opponent_agents,
-                                   device=self.device, dtype=torch.long,
-                                   requires_grad=False)
-        step = self.num_actors // 32
-        for player in self.player_pool.players:
-            player.clear_envs()
-        for i in range(0, self.num_actors, step):
-            player = self.player_pool.sample_player()
-            player.add_envs(env_indices[i:i + step])
-        print("resample done")
+    # def _resample_op(self, resample_indices):
+    #     """
+    #     each opponent occupy num_actors envs.
+    #     """
+
+    #     for op_idx in range(self.num_opponent_agents):
+    #         for player in self.player_pool.players:
+    #             player.remove_envs(resample_indices + op_idx * self.num_actors)
+    #     for op_idx in range(self.num_opponent_agents):
+    #         for env_idx in resample_indices:
+    #             player = self.player_pool.sample_player()
+    #             player.add_envs(env_idx + op_idx * self.num_actors)
+    #     for player in self.player_pool.players:
+    #         player.reset_envs()
+
+    # def resample_batch(self):
+    #     env_indices = torch.arange(end=self.num_actors * self.num_opponent_agents,
+    #                                device=self.device, dtype=torch.long,
+    #                                requires_grad=False)
+    #     step = self.num_actors // 32
+    #     for player in self.player_pool.players:
+    #         player.clear_envs()
+    #     for i in range(0, self.num_actors, step):
+    #         player = self.player_pool.sample_player()
+    #         player.add_envs(env_indices[i:i + step])
+    #     print("resample done")
 
     def restore_op(self, fn):
         checkpoint = torch_ext.load_checkpoint(fn)

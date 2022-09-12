@@ -15,6 +15,7 @@ if __name__ == '__main__':
     ap.add_argument("-p", "--play", required=False, help="play(test) network", action='store_true')
     ap.add_argument("-c", "--checkpoint", required=False, help="path to checkpoint")
     ap.add_argument("-f", "--file", required=True, help="path to config")
+    ap.add_argument("-op", "--op_load_path", default=None, required=False, help="path to opponent model")
     ap.add_argument("-na", "--num_actors", type=int, default=0, required=False, 
                     help="number of envs running in parallel, if larger than 0 will overwrite the value in yaml config")
     ap.add_argument("-s", "--sigma", type=float, required=False, help="sets new sigma value in case if 'fixed_sigma: True' in yaml config")
@@ -40,6 +41,9 @@ if __name__ == '__main__':
         if args['seed'] > 0:
             config['params']['seed'] = args['seed']
             config['params']['config']['env_config']['seed'] = args['seed']
+
+        if args['op_load_path']:
+            config['params']['config']['op_load_path'] = args['op_load_path']
 
         from rl_games.torch_runner import Runner
 
