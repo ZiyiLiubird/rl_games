@@ -167,12 +167,12 @@ def create_sts2(**kwargs):
     env = STSEnv(**kwargs)
     return env
 
-def sts2_vecenv_type(**kwargs):
-    self_play = kwargs.get('self_play', False)
-    if self_play:
-        return 'RAY'
-    else:
-        return 'SPRAY'
+# def sts2_vecenv_type(**kwargs):
+#     self_play = kwargs.get('self_play', False)
+#     if self_play:
+#         return 'RAY'
+#     else:
+#         return 'SPRAY'
 
 def create_smac(name, **kwargs):
     from rl_games.envs.smac_env import SMACEnv

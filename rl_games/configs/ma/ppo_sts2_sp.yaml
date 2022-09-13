@@ -31,8 +31,13 @@ params:
     name: sts2_sp
     env_name: sts2_sp
     player_pool_type: ''
-    player_pool_length: 10
+    player_pool_length: 3
     op_load_path: False
+    update_win_rate: 0.7
+    games_to_check: 100
+    score_to_win: 2
+    max_epochs: 1000000
+
     max_update_steps: 5000
     reward_shaper:
         scale_value: 1
@@ -40,12 +45,11 @@ params:
     gamma: 0.99
     tau: 0.95
     learning_rate: 3e-4
-    score_to_win: 100
     save_win_threshold: 0.005
     grad_norm: 10
     entropy_coef: 0.02
     truncate_grads: True
-    env_name: sts2
+    env_name: sts2_sp
     e_clip: 0.2
     clip_value: True
     num_actors: 3
@@ -59,7 +63,6 @@ params:
     normalize_input: False
     normalize_value: False
     seq_length: 5
-    max_epochs: 50000
     # self_play: True
 
     env_config:

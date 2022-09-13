@@ -758,18 +758,26 @@ class Env(object):
     def is_done(self, state_prev, state):
         """Check whether episode is done."""
         info = {}
+        info['win'] = np.zeros(self.num_agents, dtype=np.float32)
+        info['lose'] = np.zeros(self.num_agents, dtype=np.float32)
+        info['draw'] = np.zeros(self.num_agents, dtype=np.float32)
+        
         if state['home_score'] - state_prev['home_score'] > 0:
             score_changed = 1
             info['winning_team'] = 0
+            info['win'] = np.ones(self.num_agents, dtype=np.float32)
             self.win_record.append(1)
         elif state['away_score'] - state_prev['away_score'] > 0:
             score_changed = 1
             info['winning_team'] = 1
+            info['lose'] = np.ones(self.num_agents, dtype=np.float32)
             self.win_record.append(0)
         else:
             score_changed = 0
             info['winning_team'] = -1
-
+        if self.env_step == self.max_steps and (not score_changed):
+            info['draw'] = np.ones(self.num_agents, dtype=np.float32)
+        
         done = True if (score_changed or self.env_step == self.max_steps) else False
 
         return done, info
@@ -783,7 +791,7 @@ class Env(object):
             prefix = 'away%d' % self.control_index
         self.p_x, self.p_z, self.p_v_x, self.p_v_z = self.state_json[prefix+'_pos_x'], self.state_json[prefix+'_pos_z'], self.state_json[prefix+'_vel_x'], self.state_json[prefix+'_vel_z']
 
-    def step0(self, actions_int, roles=None, measure=False):
+    def _step(self, actions_int, roles=None, measure=False):
         """Main environment step.
 
         Args:
@@ -910,7 +918,7 @@ class Env(object):
                 print("env_wrapper.py : stuck in step_until_game_on() due to current_phase=%s. Manually breaking" % self.state_json['current_phase'])
                 break
 
-    def reset0(self):
+    def _reset(self):
         """Episode reset.
 
         Returns:

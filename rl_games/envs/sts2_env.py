@@ -24,7 +24,7 @@ class STSEnv(Env):
         self.is_deterministic = kwargs.pop('is_deterministic', False)
 
     def reset(self):
-        obs_dict = self.reset0()
+        obs_dict = self._reset()
         self.sum_rewards = 0
         obs_dict['obs'], obs_dict['obs_op'] = self._preproc_obs(obs_dict['obs'], obs_dict['obs_op'])
         if self.self_play:
@@ -39,7 +39,7 @@ class STSEnv(Env):
         else:
             actions_int = action
 
-        obs_dict, reward_dict, done, info = self.step0(actions_int)
+        obs_dict, reward_dict, done, info = self._step(actions_int)
         reward = np.array(reward_dict['reward'][0], dtype=np.float32) if self.self_play else np.array(reward_dict['reward'], dtype=np.float32)
         self.sum_rewards += reward
         # if reward < 0:
@@ -51,7 +51,7 @@ class STSEnv(Env):
         reward_team = np.stack(reward_team)
         done_team = [done] * self.num_agents
         done_team = np.stack(done_team)
-
+        
         if self.self_play:
             return obs_dict, reward_team, done_team, info
         else:

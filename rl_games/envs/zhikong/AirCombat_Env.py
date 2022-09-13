@@ -145,7 +145,7 @@ class AirCombatEnv(object):
         infos = [{} for i in range(self.num_agents)]
         dones = np.zeros(self.num_agents, dtype=bool)
 
-        rewards = 0
+        rewards = [np.zeros((1,), dtype=np.float32)] * self.num_agents
 
         self.process_actions(ego_action, op_action)
 
@@ -166,7 +166,7 @@ class AirCombatEnv(object):
         obs_dict['states'] = global_state
 
         # rewards = self.reward_battle(obs_dict_next)
-
+        rewards = np.stack(rewards)
         print(f"step success")
 
         return obs_dict, rewards, dones, infos

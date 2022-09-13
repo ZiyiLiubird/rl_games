@@ -35,7 +35,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             'normalize_value': self.normalize_value,
             'normalize_input': self.normalize_input,
         }
-        self.max_his_player_num = self.config.get('player_pool_length', 10)
+        self.max_his_player_num = self.config.get('player_pool_length', 3)
 
         if self.config['op_load_path']:
             self.init_op_model = self.create_model()
@@ -44,11 +44,11 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             self.init_op_model = self.model
         self.players_dir = os.path.join(self.experiment_dir, 'policy_dir')
         os.makedirs(self.players_dir, exist_ok=True)
-        self.update_win_rate = params['update_win_rate']
+        self.update_win_rate = self.config.get('update_win_rate', 0.7)
         self.num_opponent_agents = self.num_agents
         self.player_pool = self._build_player_pool(params)
 
-        self.games_to_check = params['games_to_check']
+        self.games_to_check = self.config.get('games_to_check', 100)
         self.now_update_steps = 0
         self.max_update_steps = self.config.get('max_update_steps', 5000)
         self.update_op_num = 0
@@ -94,6 +94,13 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             step_time_end = time.time()
             step_time += (step_time_end - step_time_start)
 
+            if type(infos) == dict and "win_rate" in infos.keys():
+                win_rate = infos['win_rate']
+            elif type(infos[0]) == dict and "win_rate" in infos[0].keys():
+                win_rate = infos[0]['win_rate']
+            else:
+                win_rate = 0
+
             shaped_rewards = self.rewards_shaper(rewards)
             if self.value_bootstrap and 'time_outs' in infos:
                 shaped_rewards += self.gamma * res_dict['values'] * self.cast_obs(infos['time_outs']).unsqueeze(
@@ -105,7 +112,6 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             self.current_lengths += 1
             all_done_indices = self.dones.nonzero(as_tuple=False)
             env_done_indices = self.dones.view(self.num_actors, self.num_agents).all(dim=1).nonzero(as_tuple=False)
-
             self.game_rewards.update(self.current_rewards[env_done_indices])
             self.game_lengths.update(self.current_lengths[env_done_indices])
             self.algo_observer.process_infos(infos, env_done_indices)
@@ -114,9 +120,10 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
 
             self.current_rewards = self.current_rewards * not_dones.unsqueeze(1)
             self.current_lengths = self.current_lengths * not_dones
-
+            # print(f"infos: {infos}")
+            
             self.player_pool.update_player_metric(infos=infos)
-            self.resample_op(all_done_indices.flatten())
+            self.resample_op(env_done_indices.flatten())
 
         last_values = self.get_values(self.obs)
 
@@ -131,6 +138,8 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         batch_dict['returns'] = swap_and_flatten01(mb_returns)
         batch_dict['played_frames'] = self.batch_size
         batch_dict['step_time'] = step_time
+        batch_dict['win_rate'] = win_rate
+
         return batch_dict
 
     def play_steps_rnn(self):
@@ -234,13 +243,15 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         support n cooperative agents vs m other agents.
         """
         obs = self.vec_env.reset()
+        
         obs = self.obs_to_tensors(obs)
-        obs['obs_op'] = obs['obs'][self.num_actors*self.num_agents:]
-        obs['obs'] = obs['obs'][:self.num_actors*self.num_agents]
+        # obs['obs_op'] = obs['obs'][self.num_actors*self.num_agents:]
+        # obs['obs'] = obs['obs'][:self.num_actors*self.num_agents]
         return obs
 
     def train(self):
         self.init_tensors()
+        self.last_win_rate = 0
         self.mean_rewards = self.last_mean_rewards = -100500
         start_time = time.time()
         total_time = 0
@@ -257,7 +268,9 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
 
         while True:
             epoch_num = self.update_epoch()
-            step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul = self.train_epoch()
+            step_time, play_time, update_time, sum_time, a_losses, c_losses, entropies, kls, last_lr, lr_mul, win_rate = self.train_epoch()
+            win_rate = np.mean(win_rate)
+
             # cleaning memory to optimize space
             self.dataset.update_values_dict(None)
             total_time += sum_time
@@ -296,6 +309,10 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
                         self.writer.add_scalar(rewards_name + '/iter'.format(i), mean_rewards[i], epoch_num)
                         self.writer.add_scalar(rewards_name + '/time'.format(i), mean_rewards[i], total_time)
 
+                    self.writer.add_scalar('win_rate/step', win_rate, frame)
+                    self.writer.add_scalar('win_rate/iter', win_rate, epoch_num)
+                    self.writer.add_scalar('win_rate/time', win_rate, total_time)
+
                     self.writer.add_scalar('episode_lengths/step', mean_lengths, frame)
                     self.writer.add_scalar('episode_lengths/iter', mean_lengths, epoch_num)
                     self.writer.add_scalar('episode_lengths/time', mean_lengths, total_time)
@@ -317,6 +334,12 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
                                 print('Network won!')
                                 self.save(os.path.join(self.nn_dir, checkpoint_name))
                                 should_exit = True
+
+                    if win_rate > self.last_win_rate:
+                        self.last_win_rate = win_rate
+                        if win_rate >= 0.65:
+                            print('saving next best win rate model: ', win_rate)
+                            self.save(os.path.join(self.nn_dir, self.config['name']+'_'+str(round(win_rate, 2))))
 
                 if epoch_num >= self.max_epochs:
                     if self.game_rewards.current_size == 0:
@@ -367,7 +390,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         with torch.no_grad():
             if is_op:
                 res_dict = {
-                    "actions": torch.zeros((self.num_actors * self.num_opponent_agents, self.actions_num),
+                    "actions": torch.zeros((self.num_actors * self.num_opponent_agents), dtype=torch.long,
                                            device=self.device),
                     "values": torch.zeros((self.num_actors * self.num_opponent_agents, 1), device=self.device)
                 }
@@ -395,7 +418,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             player = self.player_pool.sample_player()
             player.add_envs(torch.arange(start=env_idx*self.num_opponent_agents, 
                                          end=env_idx*self.num_opponent_agents+self.num_opponent_agents,
-                                         device=self.device, dtype=torch.long))
+                                         dtype=torch.long))
 
         for player in self.player_pool.players:
             player.reset_envs()

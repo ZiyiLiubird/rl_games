@@ -1,5 +1,6 @@
 import collections
 
+import numpy as np
 import random
 import torch
 import torch.multiprocessing as mp
@@ -57,14 +58,14 @@ class SinglePlayer:
         if model:
             self.model.eval()
         self.player_idx = player_idx
-        self._games = torch.tensor(0, device=device, dtype=torch.float)
-        self._wins = torch.tensor(0, device=device, dtype=torch.float)
-        self._loses = torch.tensor(0, device=device, dtype=torch.float)
-        self._draws = torch.tensor(0, device=device, dtype=torch.float)
+        self._games = np.array(0, dtype=np.float32)
+        self._wins = np.array(0, dtype=np.float32)
+        self._loses = np.array(0, dtype=np.float32)
+        self._draws = np.array(0, dtype=np.float32)
         self._decay = 0.998
-        self._has_env = torch.zeros((obs_batch_len,), device=device, dtype=torch.bool)
+        self._has_env = torch.zeros((obs_batch_len,), dtype=torch.bool)
         self.device = device
-        self.env_indices = torch.tensor([], device=device, dtype=torch.long, requires_grad=False)
+        self.env_indices = torch.tensor([], dtype=torch.long, requires_grad=False)
         if rating:
             self.rating = rating
 
@@ -81,12 +82,12 @@ class SinglePlayer:
         self._has_env[env_indices] = True
 
     def clear_envs(self):
-        self.env_indices = torch.tensor([], device=self.device, dtype=torch.long, requires_grad=False)
+        self.env_indices = torch.tensor([], dtype=torch.long, requires_grad=False)
 
     def update_metric(self, wins, loses, draws):
-        win_count = torch.sum(wins[self.env_indices])
-        lose_count = torch.sum(loses[self.env_indices])
-        draw_count = torch.sum(draws[self.env_indices])
+        win_count = np.sum(wins[self.env_indices])
+        lose_count = np.sum(loses[self.env_indices])
+        draw_count = np.sum(draws[self.env_indices])
         for stats in (self._games, self._wins, self._loses, self._draws):
             stats *= self._decay
         self._games += win_count + lose_count + draw_count
@@ -95,10 +96,10 @@ class SinglePlayer:
         self._draws += draw_count
 
     def clear_metric(self):
-        self._games = torch.tensor(0, device=self.device, dtype=torch.float)
-        self._wins = torch.tensor(0, device=self.device, dtype=torch.float)
-        self._loses = torch.tensor(0, device=self.device, dtype=torch.float)
-        self._draws = torch.tensor(0, device=self.device, dtype=torch.float)
+        self._games = np.array(0, dtype=np.float32)
+        self._wins = np.array(0, dtype=np.float32)
+        self._loses = np.array(0, dtype=np.float32)
+        self._draws = np.array(0, dtype=np.float32)
 
     def win_rate(self):
         if self.model is None:
@@ -153,6 +154,10 @@ class PFSPPlayerPool:
             input_dict['obs'] = processed_obs[player.env_indices]
             out_dict = player(input_dict)
             for key in res_dict:
+                # print(f"key: {key}")
+                # print(f"res_dict[key][player.env_indices]: {res_dict[key][player.env_indices]}")
+                # print(f"out_dict[key]: {out_dict[key]}")
+                
                 res_dict[key][player.env_indices] = out_dict[key]
 
 
