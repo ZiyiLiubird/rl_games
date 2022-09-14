@@ -54,10 +54,6 @@ For maximum training performance a preliminary installation of Pytorch 1.9+ with
 ```conda install pytorch torchvision cudatoolkit=11.3 -c pytorch -c nvidia``` or:
 ```pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html```
 
-Then:
-
-```pip install rl-games```
-
 To run CPU-based environments either Ray or envpool are required ```pip install envpool``` or ```pip install ray```
 To run Mujoco, Atari games or Box2d based environments training they need to be additionally installed with ```pip install gym[mujoco]```, ```pip install gym[atari]``` or ```pip install gym[box2d]``` respectively.
 
