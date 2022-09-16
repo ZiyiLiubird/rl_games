@@ -167,12 +167,10 @@ def create_sts2(**kwargs):
     env = STSEnv(**kwargs)
     return env
 
-# def sts2_vecenv_type(**kwargs):
-#     self_play = kwargs.get('self_play', False)
-#     if self_play:
-#         return 'RAY'
-#     else:
-#         return 'SPRAY'
+def create_zhikong(**kwargs):
+    from rl_games.envs.zhikong.AirCombat_Env import AirCombatEnv
+    env = AirCombatEnv(**kwargs)
+    return env
 
 def create_smac(name, **kwargs):
     from rl_games.envs.smac_env import SMACEnv
@@ -381,6 +379,10 @@ configurations = {
     },
     'sts2_sp': {
         'env_creator' : lambda **kwargs : create_sts2(**kwargs),
+        'vecenv_type' : 'SPRAY'
+    },
+    'zhikong': {
+        'env_creator' : lambda **kwargs : create_zhikong(**kwargs),
         'vecenv_type' : 'SPRAY'
     },
     'dm_control' : {

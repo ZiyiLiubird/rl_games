@@ -20,7 +20,7 @@ print(f"len obs: {len(obs_feature_list)}")
 
 act_feature_list = ["fcs/aileron-cmd-norm", "fcs/elevator-cmd-norm",
                     "fcs/rudder-cmd-norm", "fcs/throttle-cmd-norm", 
-                    "fcs/weapon-launch", "switch-missile"]
+                    "fcs/weapon-launch", "switch-missile",]
 
 hrl_act_feature_list = ["mode", "target_longdeg", "target_latdeg", "target_altitude_ft", "target_velocity",
                         "target_track_deg", "simulation/do_simple_trim", "change-target"]
@@ -50,16 +50,16 @@ def init_info(agent_nums, reset=True):
         dict_init = {'flag':{'init':{'render': render}},
                     'red':{
                         'red_0':
-                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.01,
+                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.1,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 }
                         },
                     'blue':{
                         'blue_0':
-                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.01,
+                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.1,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             }
                             }
                     }
@@ -68,26 +68,26 @@ def init_info(agent_nums, reset=True):
         dict_init = {'flag':{'init':{'render': render}},
                     'red':{
                         'red_0':
-                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.01,
+                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.01,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_1':
-                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.05,
+                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.05,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         },
                     'blue':{
                         'blue_0':
-                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.01,
+                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.01,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_1':
-                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.05,
+                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.05,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                             }
                     }
@@ -96,36 +96,36 @@ def init_info(agent_nums, reset=True):
         dict_init = {'flag':{'init':{'render': render}},
                     'red':{
                         'red_0':
-                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.01,
+                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.01,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_1':
-                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.05,
+                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.05,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_2':
-                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.1,
+                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.1,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         },
                     'blue':{
                         'blue_0':
-                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.01,
+                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.01,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_1':
-                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.05,
+                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.05,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_2':
-                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.1,
+                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.1,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                             }
                     }
@@ -135,44 +135,44 @@ def init_info(agent_nums, reset=True):
                         'red_0':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.01,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_1':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.05,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_2':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.1,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_3':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.15,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         },
                     'blue':{
                         'blue_0':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.01,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_1':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.05,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_2':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.1,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_3':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.15,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                             }
                     }
@@ -182,54 +182,54 @@ def init_info(agent_nums, reset=True):
                         'red_0':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.01,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_1':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.05,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_2':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.1,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_3':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.15,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         'red_4':
                                 {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.05, "ic/lat-geod-deg": 0.2,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                                "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                                "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 },
                         },
                     'blue':{
                         'blue_0':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.01,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_1':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.05,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_2':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.1,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_3':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.15,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                         'blue_4':
                             {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.05, "ic/lat-geod-deg": 0.2,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": 135
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
                             },
                             }
                     }
