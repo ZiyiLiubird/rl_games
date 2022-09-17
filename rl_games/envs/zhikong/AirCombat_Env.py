@@ -240,7 +240,7 @@ class AirCombatEnv(object):
         obs_op = np.zeros((self.blue_agents_num, self.observation_space.shape[0]), dtype=np.float32)
 
         for agent_name in ego_obs_dict.keys():
-            if ego_obs_dict[agent_name]['DeathEvent'] != 99.0:
+            if int(ego_obs_dict[agent_name]['DeathEvent']) != 99:
                 continue
             obs_agent = self.get_obs_agent(agent_name, camp='red')
             # print(f"obs dim: {obs_agent.shape}")
@@ -250,7 +250,7 @@ class AirCombatEnv(object):
             #     obs[self.red_ni_mapping[agent_name]][i] = ego_obs_dict[agent_name][feature]
 
         for agent_name in op_obs_dict.keys():
-            if op_obs_dict[agent_name]['DeathEvent'] != 99.0:
+            if int(op_obs_dict[agent_name]['DeathEvent']) != 99:
                 continue
             obs_agent = self.get_obs_agent(agent_name, camp='blue')
             obs_op[self.blue_ni_mapping[agent_name]] = obs_agent
@@ -264,38 +264,32 @@ class AirCombatEnv(object):
         """
         opponent info including health and vel infos.
         """
-        obs_health = []
-        obs_vel = []
-        obs_pos = []
+        op_infos = np.zeros((self.blue_agents_num, 18), dtype=np.float32)
         agents = self.camp_2_agents[camp]
 
-        for agent_name in agents:
-            if self.obs_dict[camp][agent_name]['DeathEvent'] != 99:
+        for i, agent_name in enumerate(agents):
+            if int(self.obs_dict[camp][agent_name]['DeathEvent']) != 99:
                 continue
-            obs_health.append(self.obs_dict[camp][agent_name]['LifeCurrent'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/u-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/v-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/w-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/v-north-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/v-east-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/v-down-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/p-rad_sec'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/q-rad_sec'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/r-rad_sec'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/h-dot-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/ve-fps'])
-            obs_vel.append(self.obs_dict[camp][agent_name]['velocities/mach'])
-            obs_pos.append(self.obs_dict[camp][agent_name]['position/h-sl-ft'])
-            obs_pos.append(self.obs_dict[camp][agent_name]['attitude/pitch-rad'])
-            obs_pos.append(self.obs_dict[camp][agent_name]['attitude/roll-rad'])
-            obs_pos.append(self.obs_dict[camp][agent_name]['attitude/psi-deg'])
-            obs_pos.append(self.obs_dict[camp][agent_name]['aero/beta-deg'])
+            op_infos[i, 0] = self.obs_dict[camp][agent_name]['LifeCurrent']
+            op_infos[i, 1] = self.obs_dict[camp][agent_name]['velocities/u-fps']
+            op_infos[i, 2] = self.obs_dict[camp][agent_name]['velocities/v-fps']
+            op_infos[i, 3] = self.obs_dict[camp][agent_name]['velocities/w-fps']
+            op_infos[i, 4] = self.obs_dict[camp][agent_name]['velocities/v-north-fps']
+            op_infos[i, 5] = self.obs_dict[camp][agent_name]['velocities/v-east-fps']
+            op_infos[i, 6] = self.obs_dict[camp][agent_name]['velocities/v-down-fps']
+            op_infos[i, 7] = self.obs_dict[camp][agent_name]['velocities/p-rad_sec']
+            op_infos[i, 8] = self.obs_dict[camp][agent_name]['velocities/q-rad_sec']
+            op_infos[i, 9] = self.obs_dict[camp][agent_name]['velocities/r-rad_sec']
+            op_infos[i, 10] = self.obs_dict[camp][agent_name]['velocities/h-dot-fps']
+            op_infos[i, 11] = self.obs_dict[camp][agent_name]['velocities/ve-fps']
+            op_infos[i, 12] = self.obs_dict[camp][agent_name]['velocities/mach']
+            op_infos[i, 13] = self.obs_dict[camp][agent_name]['position/h-sl-ft']
+            op_infos[i, 14] = self.obs_dict[camp][agent_name]['attitude/pitch-rad']
+            op_infos[i, 15] = self.obs_dict[camp][agent_name]['attitude/roll-rad']
+            op_infos[i, 16] = self.obs_dict[camp][agent_name]['attitude/psi-deg']
+            op_infos[i, 17] = self.obs_dict[camp][agent_name]['aero/beta-deg']
 
-        obs_health = np.array(obs_health, dtype=np.float32)
-        obs_vel = np.array(obs_vel, dtype=np.float32)
-        obs_pos = np.array(obs_pos, dtype=np.float32)
-        
-        obs_op = np.concatenate([obs_health.flatten(), obs_vel.flatten(), obs_pos.flatten()])
+        obs_op = op_infos.flatten()
         return obs_op
 
 
@@ -385,15 +379,7 @@ class AirCombatEnv(object):
             view_one_hot_4[indices] = 1
         if '99' not in str(self.obs_dict[camp][agent_name]['AMRAAMlockedTarget']):
             indices = self._view_sin(self.obs_dict[camp][agent_name]['AMRAAMlockedTarget'])
-            view_one_hot_5[indices] = 1
-        
-        # if '99' not in str(self.obs_dict[camp][agent_name]['AllyIntoView']):
-        #     view_one_hot_2[int(self.obs_dict[camp][agent_name]['AllyIntoView'])] = 1
-        # if '99' not in str(self.obs_dict[camp][agent_name]['TargetEnterAttackRange']):
-        #     view_one_hot_3[int(self.obs_dict[camp][agent_name]['TargetEnterAttackRange'])] = 1
-        # if '99' not in str(self.obs_dict[camp][agent_name]['TargetEnterAttackRange']):
-        #     view_one_hot_4[int(self.obs_dict[camp][agent_name]['SRAAMTargetLocked'])] = 1
-        
+            view_one_hot_5[indices] = 1        
         view_one_hot_6[int(self.obs_dict[camp][agent_name]['MissileAlert'])] = 1
 
         if camp == 'red' and self.obs_dict[camp][agent_name]['MissileAlert']:
@@ -436,44 +422,38 @@ class AirCombatEnv(object):
 
     def _oracal_guiding_feature(self, agent_name, ego_camp, op_camp):
 
-        obs_red = self.obs_dict['red']['red_0']
-        obs_blue = self.obs_dict['blue']['blue_0']
         op_agents = self.camp_2_agents[op_camp]
 
-        distance = []
-        d_elevation_red = []
-        d_azimuth_red = []
-        d_elevation_blue = []
-        d_azimuth_blue = []
+        threat_infos = np.zeros((self.blue_agents_num, 3), dtype=np.float32)
 
         ego_x, ego_y, ego_z = self.latitude_2_xyz(
             self.obs_dict[ego_camp][agent_name]['position/long-gc-deg'],
             self.obs_dict[ego_camp][agent_name]['position/lat-geod-deg'],
             self.obs_dict[ego_camp][agent_name]['position/h-sl-ft'] * 0.3048)
 
-        for op_name in op_agents:
+        for i, op_name in enumerate(op_agents):
+
+            if int(self.obs_dict[op_camp][op_name]['DeathEvent']) != 99:
+                continue
             op_x, op_y, op_z = self.latitude_2_xyz(
             self.obs_dict[op_camp][op_name]['position/long-gc-deg'],
             self.obs_dict[op_camp][op_name]['position/lat-geod-deg'],
             self.obs_dict[op_camp][op_name]['position/h-sl-ft'] * 0.3048)
             dist = np.array(math.sqrt((ego_x - op_x) ** 2 + (ego_y - op_y) ** 2 + (ego_z - op_z) ** 2), dtype=np.float32)
-            distance.append(dist)
+            threat_infos[i, 0] = dist
 
             elevation, azimuth = self.look_vector((ego_x, ego_y, ego_z), (op_x, op_y, op_z))
-            d_elevation_red.append(elevation - self.obs_dict[ego_camp][agent_name]['attitude/pitch-rad'] * 180 / 3.14)
-            d_azimuth_red.append(azimuth - self.obs_dict[ego_camp][agent_name]['attitude/psi-deg'])
-
+            d_elevation_red = elevation - self.obs_dict[ego_camp][agent_name]['attitude/pitch-rad'] * 180 / 3.14
+            d_azimuth_red = azimuth - self.obs_dict[ego_camp][agent_name]['attitude/psi-deg']
+            threat_infos[i, 1] = d_elevation_red
+            threat_infos[i, 2] = d_azimuth_red
+            
             # 对手视角，该部分按道理应该根据速度计算，但是为了简化计算过程，将位姿直接近似成了速度的方向
             elevation, azimuth = self.look_vector((op_x, op_y, op_z), (ego_x, ego_y, ego_z))
-            d_elevation_blue.append(elevation - self.obs_dict[op_camp][op_name]['attitude/pitch-rad'] * 180 / 3.14)
-            d_azimuth_blue.append(azimuth - self.obs_dict[op_camp][op_name]['attitude/psi-deg'])
+            d_elevation_blue = elevation - self.obs_dict[op_camp][op_name]['attitude/pitch-rad'] * 180 / 3.14
+            d_azimuth_blue = azimuth - self.obs_dict[op_camp][op_name]['attitude/psi-deg']
 
-        distance = np.array(distance, dtype=np.float32)
-        d_elevation_red = np.array(d_elevation_red, dtype=np.float32)
-        d_azimuth_red = np.array(d_azimuth_red, dtype=np.float32)
-
-        threat_info = np.concatenate([distance.flatten(), d_elevation_red.flatten(),
-                                      d_azimuth_red.flatten()])
+        threat_info = threat_infos.flatten()
 
         # post_process_obs = [distance, d_elevation_red, d_azimuth_red,
         #                     d_elevation_blue, d_azimuth_blue]
@@ -506,7 +486,7 @@ class AirCombatEnv(object):
         # print(f"************obs_dict inner*******************")
         # print(agents_dict)
         for key in self.obs_dict['red'].keys():
-            if self.obs_dict['red'][key]['DeathEvent'] == 99.0:
+            if int(self.obs_dict['red'][key]['DeathEvent']) == 99:
                 print(f"red death event: {self.obs_dict['red'][key]['DeathEvent']}")
                 red_all_dead = False
                 break
@@ -515,7 +495,7 @@ class AirCombatEnv(object):
             return red_all_dead
         for key in self.obs_dict['blue'].keys():
             # print(f"blue: keys {agents_dict['blue'][key].keys()}")
-            if self.obs_dict['blue'][key]['DeathEvent'] == 99.0:
+            if int(self.obs_dict['blue'][key]['DeathEvent']) == 99:
                 blue_all_dead = False
                 break
         if blue_all_dead:
