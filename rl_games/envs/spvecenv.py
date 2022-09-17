@@ -9,7 +9,8 @@ from time import sleep
 import torch
 
 class SPRayWorker:
-    def __init__(self, config_name, config):
+    def __init__(self, config_name, config, env_id=888):
+        config['worker_index'] =  env_id
         self.env = configurations[config_name]['env_creator'](**config)
 
     def _obs_to_fp32(self, obs):
@@ -50,8 +51,8 @@ class SPRayWorker:
     def render(self):
         self.env.render()
 
-    def reset(self):
-        obs = self.env.reset()
+    def reset(self, init=False):
+        obs = self.env.reset(init)
         obs = self._obs_to_fp32(obs)
         return obs
 
@@ -99,7 +100,8 @@ class SPRayVecEnv(IVecEnv):
         self.use_torch = False
         self.seed = kwargs.pop('seed', None)
         self.remote_worker = ray.remote(SPRayWorker)
-        self.workers = [self.remote_worker.remote(self.config_name, kwargs) for i in range(self.num_actors)]
+        worker_index = kwargs.get("worker_index", 888)
+        self.workers = [self.remote_worker.remote(self.config_name, kwargs, i+worker_index) for i in range(self.num_actors)]
 
         if self.seed is not None:
             seeds = range(self.seed, self.seed + self.num_actors)
@@ -120,7 +122,7 @@ class SPRayVecEnv(IVecEnv):
         self.obs_type_dict = type(env_info.get('observation_space')) is gym.spaces.Dict
         self.state_type_dict = type(env_info.get('state_space')) is gym.spaces.Dict
         if self.num_agents == 1:
-            self.concat_func = np.stack
+            self.concat_func = np.concatenate
         else:
             self.concat_func = np.concatenate
 
@@ -179,8 +181,8 @@ class SPRayVecEnv(IVecEnv):
         masks = ray.get(mask)
         return np.concatenate(masks, axis=0)
 
-    def reset(self):
-        res_obs = [worker.reset.remote() for worker in self.workers]
+    def reset(self, init=False):
+        res_obs = [worker.reset.remote(init) for worker in self.workers]
         newobs, newobs_op, newstates = [], [], []
         for res in res_obs:
             cobs = ray.get(res)

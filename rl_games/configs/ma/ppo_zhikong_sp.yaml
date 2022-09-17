@@ -3,14 +3,14 @@ params:
     name: pfsp
 
   model:
-    name: discrete_a2c
+    name: multi_discrete_a2c
 
   network:
     name: actor_critic
     separate: True
     #normalization: layer_norm
     space:
-      discrete:
+      multi_discrete:
 
     mlp:
       units: [1024, 1024, 512]
@@ -35,7 +35,7 @@ params:
     op_load_path: False
     update_win_rate: 0.7
     games_to_check: 100
-    score_to_win: 2
+    score_to_win: 30
     max_epochs: 1000000
 
     max_update_steps: 5000
@@ -78,7 +78,7 @@ params:
       action_space_type: MultiDiscrete
       apply_agent_ids: True
       central_value: False
-      episode_max_length: 1000
+      episode_max_length: 500
       change_target: False
       render: False
       record_game_state: False

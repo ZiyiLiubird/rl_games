@@ -52,7 +52,6 @@ class env:
         msg_receive = self._accept_from_socket()
         return msg_receive
 
-    # 测试时使用，直接发送初始化/重置数据
     def reset(self, reset_attribute):
 
         data = json.dumps(reset_attribute)

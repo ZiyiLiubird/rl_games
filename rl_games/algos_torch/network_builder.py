@@ -475,7 +475,6 @@ class A2CBuilder(NetworkBuilder):
             self.has_space = 'space' in params
             self.central_value = params.get('central_value', False)
             self.joint_obs_actions_config = params.get('joint_obs_actions', None)
-
             if self.has_space:
                 self.is_multi_discrete = 'multi_discrete'in params['space']
                 self.is_discrete = 'discrete' in params['space']

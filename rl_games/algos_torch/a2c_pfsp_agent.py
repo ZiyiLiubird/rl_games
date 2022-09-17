@@ -78,7 +78,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             else:
                 res_dict_op = self.get_action_values(self.obs, is_op=True)
                 res_dict = self.get_action_values(self.obs)
-
+            # print(f"self.obs shape: {self.obs['obs'].shape}")
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
             self.experience_buffer.update_data('dones', n, self.dones)
             for k in update_list:
@@ -94,8 +94,11 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             step_time_end = time.time()
             step_time += (step_time_end - step_time_start)
 
-            if type(infos) == dict and "win_rate" in infos.keys():
-                win_rate = infos['win_rate']
+            if type(infos) == dict:
+                if "win_rate" in infos.keys():
+                    win_rate = infos['win_rate']
+                else:
+                    win_rate = 0
             elif type(infos[0]) == dict and "win_rate" in infos[0].keys():
                 win_rate = infos[0]['win_rate']
             else:
@@ -242,7 +245,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         """
         support n cooperative agents vs m other agents.
         """
-        obs = self.vec_env.reset()
+        obs = self.vec_env.reset(init=True)
         
         obs = self.obs_to_tensors(obs)
         # obs['obs_op'] = obs['obs'][self.num_actors*self.num_agents:]
@@ -258,6 +261,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         rep_count = 0
         # self.frame = 0  # loading from checkpoint
         self.obs = self.env_reset()
+        print(f"self.obs shape: {self.obs['obs'].shape}")
 
         if self.multi_gpu:
             torch.cuda.set_device(self.rank)
@@ -390,7 +394,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         with torch.no_grad():
             if is_op:
                 res_dict = {
-                    "actions": torch.zeros((self.num_actors * self.num_opponent_agents), dtype=torch.long,
+                    "actions": torch.zeros((self.num_actors * self.num_opponent_agents, len(self.actions_num)), dtype=torch.long,
                                            device=self.device),
                     "values": torch.zeros((self.num_actors * self.num_opponent_agents, 1), device=self.device)
                 }

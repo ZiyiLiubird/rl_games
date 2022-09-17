@@ -1,9 +1,10 @@
+from distutils.log import info
 import enum
 import os.path as osp
 import sys
 
 parent_path = osp.dirname(__file__)
-print(parent_path)
+# print(parent_path)
 sys.path.append(parent_path)
 
 import math
@@ -13,8 +14,9 @@ import time
 import random
 from ale_py import os
 import numpy as np
-from gym.spaces import Discrete, Box, MultiDiscrete
-from zhikong import comm_interface
+from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
+from rl_games.envs.zhikong import comm_interface
+# from zhikong import comm_interface
 from .util import init_info, obs_feature_list, act_feature_list
 
 action_aileron = np.linspace(-1., 1., 9) # fcs/aileron-cmd-norm
@@ -73,6 +75,7 @@ class AirCombatEnv(object):
         self.blue_agents_num = kwargs.get('blue_agents_num', 1)
         self.num_agents = self.red_agents_num
         self.apply_agent_ids = True
+        self.concat_infos = True
         print(f"Red Agents Num: {self.red_agents_num}")
         print(f"Blue Agents Num: {self.blue_agents_num}")
         assert (self.n_agents % 2 == 0), ("We only support N vs N now.")
@@ -142,14 +145,15 @@ class AirCombatEnv(object):
         # (switch-missile)： 2
         # (change-target): 0/1/12/012/0134. 99 default.
         if self.change_target:
-            self.action_spaces = [MultiDiscrete([9, 9, 9, 5, 2, 2, 5]) for _ in range(self.n_agents)]
             self.act_feature_list = act_feature_list
             self.act_feature_list.append("change-target")
+            self.action_space = Tuple((Discrete(9), Discrete(9),
+                                    Discrete(9), Discrete(5), Discrete(2), Discrete(2),Discrete(5)))
         else:
-            self.action_spaces = [MultiDiscrete([9, 9, 9, 5, 2, 2]) for _ in range(self.n_agents)]
             self.act_feature_list = act_feature_list
-
-        self.action_space = self.action_spaces[0]
+            self.action_space = Tuple((Discrete(9), Discrete(9),
+                                    Discrete(9), Discrete(5), Discrete(2), Discrete(2)))
+        
         self.action_map = {}
         self.action_map["fcs/aileron-cmd-norm"] = action_aileron
         self.action_map["fcs/elevator-cmd-norm"] = action_elevator
@@ -157,17 +161,17 @@ class AirCombatEnv(object):
         self.action_map["fcs/throttle-cmd-norm"] = action_throttle
 
         # 42 obs
+        shape = 91
+        if self.red_agents_num == 1:
+            shape = 91
+        elif self.red_agents_num == 2:
+            shape = 173
+        elif self.red_agents_num == 3:
+            shape = 255
         self.observation_spaces = [
             Box(low=np.float32(-np.inf), high=np.float32(np.inf),
-                shape=(255, ), dtype=np.float32) for _ in range(self.n_agents)]
+                shape=(shape, ), dtype=np.float32) for _ in range(self.n_agents)]
         self.observation_space = self.observation_spaces[0]
-
-        self.action_space_dict = {
-            agent: space for agent, space in zip(self.agents, self.action_spaces)
-        }
-        self.observation_space_dict = {
-            agent: space for agent, space in zip(self.agents, self.observation_spaces)
-        }
 
         self.obs_feature_list = obs_feature_list
 
@@ -190,7 +194,8 @@ class AirCombatEnv(object):
         
 
     def reset(self, init=False):
-        print(f"reset start...")
+        # print(f"reset start...")
+        # print(f"init: {init}")
         self.red_death = np.zeros((self.red_agents_num), dtype=int)
         self.red_death_missile = np.zeros((self.red_agents_num), dtype=int)
         self.blue_death = np.zeros((self.blue_agents_num), dtype=int)
@@ -198,19 +203,19 @@ class AirCombatEnv(object):
         self.cum_rewards = 0
         self._episode_steps = 0
         if init:
-            print(self.dict_init)
+            # print(self.dict_init)
             self.obs_dict = self.env.reset(self.dict_init)
             self.prev_obs_dict = None
         else:
-            print(self.dict_reset)
+            # print(self.dict_reset)
             self.obs_dict = self.env.reset(self.dict_reset)
             self.prev_obs_dict = None
-        print(f"env reset success !")
+        # print(f"env reset success !")
         obs, obs_op = self.get_obs()
         obs_dict = {}
         obs_dict['obs'], obs_dict['obs_op'] =obs, obs_op
 
-        print(f"reset success!")
+        # print(f"reset success!")
         return obs_dict
 
     def step(self, actions):
@@ -219,9 +224,12 @@ class AirCombatEnv(object):
         self.prev_obs_dict = deepcopy(self.obs_dict)
 
         ego_action, op_action = actions[0], actions[1]
-
+        # print(f"ego_action: {ego_action}")
+        # print(f"action type: {type(ego_action)}")
+        ego_action = ego_action.reshape(self.red_agents_num, -1)
+        op_action = op_action.reshape(self.blue_agents_num, -1)
         self.missile_launch(ego_action)
-        infos = [{} for i in range(self.num_agents)]
+        infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
 
         # rewards = [np.zeros((1,), dtype=np.float32)] * self.num_agents
@@ -271,9 +279,25 @@ class AirCombatEnv(object):
         if self.reward_scale:
             reward /= self.max_reward / self.reward_scale_rate
         self.cum_rewards += reward
-        print(f"********** reward: {reward} ************")
+        # print(f"********** reward: {reward} ************")
         
-        rewards = [[reward]] * self.num_agents
+        rewards = [np.array(reward, dtype=np.float32)] * self.num_agents
+        if self.red_all_dead and not self.blue_all_dead:
+            infos['win'] = False
+            infos['lose'] = True
+            infos['draw'] = False
+        elif not self.red_all_dead and self.blue_all_dead:
+            infos['win'] = True
+            infos['lose'] = False
+            infos['draw'] = False
+        elif self.red_all_dead and self.blue_all_dead:
+            infos['win'] = False
+            infos['lose'] = False
+            infos['draw'] = True
+        else:
+            infos['win'] = False
+            infos['lose'] = False
+            infos['draw'] = False
 
         return obs_dict, rewards, dones, infos
 
@@ -313,7 +337,7 @@ class AirCombatEnv(object):
             if int(ego_obs_dict[agent_name]['DeathEvent']) != 99:
                 continue
             obs_agent = self.get_obs_agent(agent_name, camp='red')
-            print(f"obs dim: {obs_agent.shape}")
+            # print(f"obs dim: {obs_agent.shape}")
             # print(f"obs: {obs_agent}")
             obs[self.red_ni_mapping[agent_name]] = obs_agent
             # for i, feature in enumerate(self.obs_feature_list):
@@ -550,11 +574,11 @@ class AirCombatEnv(object):
 
         if np.sum(self.red_death) == self.red_agents_num:
             self.red_all_dead = True
-            print(f"Red all Dead !!!")
+            # print(f"Red all Dead !!!")
         if np.sum(self.blue_death) == self.blue_agents_num:
             self.blue_all_dead = True
-            print(f"Blue all Dead !!!")
-
+            # print(f"Blue all Dead !!!")
+            
         return (self.red_all_dead or self.blue_all_dead)
 
     def seed(self, seed=1):
@@ -638,7 +662,10 @@ class AirCombatEnv(object):
         for al_id, ego_agent_name in enumerate(self.red_agents):
             if int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
                 continue
-            launch = action[al_id, 4]
+            if len(action.shape) == 1:
+                launch = action[4]
+            else:
+                launch = action[al_id, 4]
             if (self.prev_obs_dict['red'][ego_agent_name]['AimMode'] == 0 \
                 and int(self.prev_obs_dict['red'][ego_agent_name]['SRAAMTargetLocked']) == 99) or (
                     self.prev_obs_dict['red'][ego_agent_name]['AimMode'] == 1 \

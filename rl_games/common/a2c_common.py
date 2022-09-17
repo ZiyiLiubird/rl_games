@@ -790,6 +790,7 @@ class DiscreteA2CBase(A2CBase):
         if type(action_space) is gym.spaces.Tuple:
             self.actions_shape = (self.horizon_length, batch_size, len(action_space)) 
             self.actions_num = [action.n for action in action_space]
+            print(f"self.actions_num: {self.actions_num}")
             self.is_multi_discrete = True
         self.is_discrete = True
 

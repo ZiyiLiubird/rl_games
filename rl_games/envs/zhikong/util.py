@@ -63,7 +63,7 @@ def init_info(agent_nums, reset=True):
                             }
                             }
                     }
-    
+
     elif agent_nums == 2:
         dict_init = {'flag':{'init':{'render': render}},
                     'red':{
