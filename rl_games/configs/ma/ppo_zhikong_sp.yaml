@@ -13,8 +13,8 @@ params:
       discrete:
 
     mlp:
-      units: [128, 128, 64]
-      activation: elu
+      units: [1024, 1024, 512]
+      activation: elu # relu
       initializer:
         name: 'orthogonal_initializer'
       regularizer:
@@ -87,6 +87,16 @@ params:
       activate_role_reward: False
       role_reward_param_file: null
       save_frequency: 500
+      single_agent_mode: False
+      min_height: 1000
+      reward_win: 200
+      reward_sparse: False
+      reward_only_positive: False
+      reward_death_value: 10
+      reward_negative_scale: 0.5
+      reward_scale: True
+      reward_scale_rate: 20
+      reward_defeat: 0
 
     player:
       render: False

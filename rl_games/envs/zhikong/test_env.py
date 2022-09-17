@@ -42,8 +42,10 @@ while True:
     obs, rewards, dones, infos = env.step(actions)
     steps += 1
     print(f"steps: {steps}")
+    print(f"cum_rewards: {env.cum_rewards}")
     if np.all(dones):
         print(f"episode done!")
+        1/0
         obs = env.reset()
         steps = 0
 
