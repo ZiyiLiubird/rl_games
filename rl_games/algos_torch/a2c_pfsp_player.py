@@ -36,6 +36,7 @@ class SPPlayer(BasePlayer):
             self.actions_num = [action.n for action in self.action_space]
             self.is_multi_discrete = True
         self.is_discrete = True
+        self.is_determenistic = params['player']['determenistic']
         # self.actions_low = torch.from_numpy(self.action_space.low.copy()).float().to(self.device)
         # self.actions_high = torch.from_numpy(self.action_space.high.copy()).float().to(self.device)
         self.mask = [False]
@@ -74,7 +75,7 @@ class SPPlayer(BasePlayer):
     def run(self):
         n_games = self.games_num
         n_game_life = self.n_game_life
-        is_determenistic = True
+        is_determenistic = self.is_determenistic
         sum_rewards = 0
         sum_steps = 0
         n_games = n_games * n_game_life
@@ -116,41 +117,6 @@ class SPPlayer(BasePlayer):
                 steps += 1
                 if np.all(done):
                     break
-                # all_done_indices = done.nonzero(as_tuple=False)
-                # done_indices = all_done_indices
-                # done_count = len(done_indices)
-                # games_played += done_count
-                # if self.record_elo:
-                #     self._update_rating(info, all_done_indices.flatten())
-                # if done_count > 0:
-
-                    # cur_rewards = cr[done_indices].sum().item()
-                    # cur_steps = steps[done_indices].sum().item()
-
-                    # cr = cr * (1.0 - done.float())
-                    # steps = steps * (1.0 - done.float())
-                    # sum_rewards += cur_rewards
-                    # sum_steps += cur_steps
-
-                    # game_res = 0.0
-                    # if isinstance(info, dict):
-                    #     if 'battle_won' in info:
-                    #         print_game_res = True
-                    #         game_res = info.get('battle_won', 0.5)
-                    #     if 'scores' in info:
-                    #         print_game_res = True
-                    #         game_res = info.get('scores', 0.5)
-                    # if self.print_stats:
-                    #     if print_game_res:
-                    #         print('reward:', cur_rewards / done_count,
-                    #               'steps:', cur_steps / done_count, 'w:', game_res)
-                    #     else:
-                    #         print('reward:', cur_rewards / done_count,
-                    #               'steps:', cur_steps / done_count)
-
-                    # sum_game_res += game_res
-                    # if batch_size // self.num_agents == 1 or games_played >= n_games:
-                    #     break
 
     def get_action(self, obs, is_determenistic=False, is_op=False):
         if self.has_batch_dimension == False:

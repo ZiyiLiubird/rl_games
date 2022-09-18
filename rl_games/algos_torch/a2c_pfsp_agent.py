@@ -81,15 +81,25 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
             # print(f"self.obs shape: {self.obs['obs'].shape}")
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
             self.experience_buffer.update_data('dones', n, self.dones)
-            for k in update_list:
-                self.experience_buffer.update_data(k, n, res_dict[k])
-            if self.has_central_value:
-                self.experience_buffer.update_data('states', n, self.obs['states'])
+            # for k in update_list:
+            #     self.experience_buffer.update_data(k, n, res_dict[k])
+            # if self.has_central_value:
+            #     self.experience_buffer.update_data('states', n, self.obs['states'])
 
             if self.player_pool_type == 'multi_thread':
                 self.player_pool.thread_pool.shutdown()
             step_time_start = time.time()
             self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'], res_dict_op['actions'])
+            actions_relabel = infos['action_relabel']
+            if isinstance(actions_relabel, np.ndarray):
+                actions_relabel = torch.FloatTensor(actions_relabel)
+                
+            res_dict['actions'] = actions_relabel
+            
+            for k in update_list:
+                self.experience_buffer.update_data(k, n, res_dict[k])
+            if self.has_central_value:
+                self.experience_buffer.update_data('states', n, self.obs['states'])
 
             step_time_end = time.time()
             step_time += (step_time_end - step_time_start)

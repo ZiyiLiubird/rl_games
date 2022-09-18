@@ -8,24 +8,18 @@ params:
   network:
     name: actor_critic
     separate: True
-    #normalization: layer_norm
+    normalization: layer_norm
     space:
       multi_discrete:
 
     mlp:
-      units: [128, 128, 64] # [1024, 1024, 512]
-      activation: elu # relu
+      units: [1024, 1024, 512] #[128, 128, 64] # [1024, 1024, 512]
+      activation: relu # relu
       initializer:
         name: 'orthogonal_initializer'
       regularizer:
         name:  'None'
-    # rnn:
-    #   name: lstm # gru
-    #   units: 128
-    #   layers: 1
-    #   layer_norm: True
-    #   before_mlp: False
-    #   concat_input: False
+
   config:
     name: zhikong
     env_name: zhikong
@@ -102,14 +96,14 @@ params:
       render: False
       games_num: 200
       n_game_life: 1
-      determenistic: True
+      determenistic: False
       device: 'cpu'
 
   player:
     render: False
     games_num: 200
     n_game_life: 1
-    determenistic: True
+    determenistic: False
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/last_zhikong_ep_840_rew_3.6666722.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/last_zhikong_ep_880_rew_1.6666679.pth'

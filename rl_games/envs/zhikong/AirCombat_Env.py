@@ -19,10 +19,10 @@ from rl_games.envs.zhikong import comm_interface
 # from zhikong import comm_interface
 from .util import init_info, obs_feature_list, act_feature_list
 
-action_aileron = np.linspace(-1., 1., 9) # fcs/aileron-cmd-norm
-action_elevator = np.linspace(-1., 1., 9) # fcs/elevator-cmd-norm
-action_rudder = np.linspace(-1., 1., 9) # fcs/rudder-cmd-norm
-action_throttle = np.linspace(0., 1., 5)  # fcs/throttle-cmd-norm
+action_aileron = np.linspace(-1., 1., 5) # fcs/aileron-cmd-norm
+action_elevator = np.linspace(-1., 1., 5) # fcs/elevator-cmd-norm
+action_rudder = np.linspace(-1., 1., 5) # fcs/rudder-cmd-norm
+action_throttle = np.linspace(0., 1., 3)  # fcs/throttle-cmd-norm
 # action_change_target = [0, ]
 # actions_map = dict()
 # idx = 0
@@ -145,15 +145,16 @@ class AirCombatEnv(object):
         # (weapon-launch): 2
         # (switch-missile)： 2
         # (change-target): 0/1/12/012/0134. 99 default.
+        
         if self.change_target:
             self.act_feature_list = act_feature_list
             self.act_feature_list.append("change-target")
-            self.action_space = Tuple((Discrete(9), Discrete(9),
-                                    Discrete(9), Discrete(5), Discrete(2), Discrete(2),Discrete(5)))
+            self.action_space = Tuple((Discrete(5), Discrete(5),
+                                    Discrete(5), Discrete(3), Discrete(2), Discrete(2),Discrete(5)))
         else:
             self.act_feature_list = act_feature_list
-            self.action_space = Tuple((Discrete(9), Discrete(9),
-                                    Discrete(9), Discrete(5), Discrete(2), Discrete(2)))
+            self.action_space = Tuple((Discrete(5), Discrete(5),
+                                    Discrete(5), Discrete(3), Discrete(2), Discrete(2)))
 
         self.action_map = {}
         self.action_map["fcs/aileron-cmd-norm"] = action_aileron
@@ -192,7 +193,7 @@ class AirCombatEnv(object):
         # self.locked_time = np.zeros((self.red_agents_num), dtype=np.float32)
         # self.old_oracle = None
         # self.cur_oracle = None
-        
+
 
     def reset(self, init=False):
         # print(f"reset start...")
@@ -219,16 +220,43 @@ class AirCombatEnv(object):
         # print(f"reset success!")
         return obs_dict
 
-    def step(self, actions):
+    def preprocess_actions(self, ego_actions):
+        """
+        switch missile and weapon launch
+        """
+        srmissile_nums = np.zeros((self.red_agents_num, 1), dtype=np.float32)
+        for al_id, agent_name in enumerate(self.red_agents):
+            if int(self.prev_obs_dict['red'][agent_name]['DeathEvent']) != 99:
+                continue
+            srmissile_nums = self.prev_obs_dict['red'][agent_name]['SRAAMCurrentNum']
+            armissile_nums = self.prev_obs_dict['red'][agent_name]['AMRAAMCurrentNum']
+            aim_mode = self.prev_obs_dict['red'][agent_name]['AimMode']
+            if srmissile_nums == 0. and armissile_nums != 0 and aim_mode == 0:
+                ego_actions[al_id][-1] = 1
+            elif (armissile_nums == 0 and srmissile_nums != 0) and aim_mode == 1:
+                ego_actions[al_id][-1] =1
+            elif (armissile_nums != 0 and srmissile_nums !=0) and aim_mode == 0:
+                ego_actions[al_id][-1] = 1
+            sr_locked = self.prev_obs_dict['red'][agent_name]['SRAAMTargetLocked']
+            ar_locked = self.prev_obs_dict['red'][agent_name]['AMRAAMlockedTarget']
+            if '99' not in str(sr_locked) or '99' not in str(ar_locked):
+                ego_actions[al_id][-2] = 1
+
+        return ego_actions
+
+    def step(self, action):
         """A single environment step. Returns reward, terminated, info."""
 
         self.prev_obs_dict = deepcopy(self.obs_dict)
-
+        actions = deepcopy(action)
         ego_action, op_action = actions[0], actions[1]
-        # print(f"ego_action: {ego_action}")
-        # print(f"action type: {type(ego_action)}")
         ego_action = ego_action.reshape(self.red_agents_num, -1)
         op_action = op_action.reshape(self.blue_agents_num, -1)
+
+        # print(f"ego_action: {ego_action}")
+        # print(f"action type: {type(ego_action)}")
+        ego_action = self.preprocess_actions(ego_action)
+        
         # self.missile_launch(ego_action)
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
@@ -298,7 +326,7 @@ class AirCombatEnv(object):
             infos['lose'] = False
             infos['draw'] = False
         infos['win_rate'] =  np.mean(self.win_record) if self.win_record else 0
-
+        infos['action_relabel'] = ego_action
         return obs_dict, rewards, dones, infos
 
     def process_actions(self, ego_action, op_action):
@@ -307,6 +335,7 @@ class AirCombatEnv(object):
         op_action: (num_op_agent, action_num)
 
         """
+        # print(f"ego_action: {ego_action}")
         for i in range(int(self.red_agents_num)):
             for j, feature in enumerate(self.act_feature_list):
                 if feature in self.action_map:

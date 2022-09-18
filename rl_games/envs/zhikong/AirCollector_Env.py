@@ -214,8 +214,7 @@ class AirCollectEnv(object):
             actions[id, 3] = self.obs_dict['red'][agent_name]['fcs/throttle-cmd-norm']
 
         return actions
-    
-    
+
     def judge_done(self):
 
         self.red_all_dead = False
