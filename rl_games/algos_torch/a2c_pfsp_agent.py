@@ -427,33 +427,6 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         for player in self.player_pool.players:
             player.reset_envs()
 
-    # def _resample_op(self, resample_indices):
-    #     """
-    #     each opponent occupy num_actors envs.
-    #     """
-
-    #     for op_idx in range(self.num_opponent_agents):
-    #         for player in self.player_pool.players:
-    #             player.remove_envs(resample_indices + op_idx * self.num_actors)
-    #     for op_idx in range(self.num_opponent_agents):
-    #         for env_idx in resample_indices:
-    #             player = self.player_pool.sample_player()
-    #             player.add_envs(env_idx + op_idx * self.num_actors)
-    #     for player in self.player_pool.players:
-    #         player.reset_envs()
-
-    # def resample_batch(self):
-    #     env_indices = torch.arange(end=self.num_actors * self.num_opponent_agents,
-    #                                device=self.device, dtype=torch.long,
-    #                                requires_grad=False)
-    #     step = self.num_actors // 32
-    #     for player in self.player_pool.players:
-    #         player.clear_envs()
-    #     for i in range(0, self.num_actors, step):
-    #         player = self.player_pool.sample_player()
-    #         player.add_envs(env_indices[i:i + step])
-    #     print("resample done")
-
     def restore_op(self, fn):
         checkpoint = torch_ext.load_checkpoint(fn)
         self.init_op_model.load_state_dict(checkpoint['model'])

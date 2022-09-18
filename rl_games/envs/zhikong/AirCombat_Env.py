@@ -247,7 +247,6 @@ class AirCombatEnv(object):
 
         game_done = self.judge_done()
         if game_done:
-            terminated = True
             for i in range(self.num_agents):
                 dones[i] = True
         elif self._episode_steps >= self.episode_limit:
@@ -277,8 +276,7 @@ class AirCombatEnv(object):
         if self.reward_scale:
             reward /= self.max_reward / self.reward_scale_rate
         self.cum_rewards += reward
-        # print(f"********** reward: {reward} ************")
-        
+
         rewards = [np.array(reward, dtype=np.float32)] * self.num_agents
         if self.red_all_dead and not self.blue_all_dead_missile:
             infos['win'] = False
@@ -342,16 +340,12 @@ class AirCombatEnv(object):
             # print(f"obs dim: {obs_agent.shape}")
             # print(f"obs: {obs_agent}")
             obs[self.red_ni_mapping[agent_name]] = obs_agent
-            # for i, feature in enumerate(self.obs_feature_list):
-            #     obs[self.red_ni_mapping[agent_name]][i] = ego_obs_dict[agent_name][feature]
 
         for agent_name in op_obs_dict.keys():
             if int(op_obs_dict[agent_name]['DeathEvent']) != 99:
                 continue
             obs_agent = self.get_obs_agent(agent_name, camp='blue')
             obs_op[self.blue_ni_mapping[agent_name]] = obs_agent
-            # for i, feature in enumerate(self.obs_feature_list):
-            #     obs_op[self.blue_ni_mapping[agent_name]][i] = op_obs_dict[agent_name][feature]
 
         return obs, obs_op
 

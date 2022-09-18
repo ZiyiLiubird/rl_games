@@ -13,7 +13,7 @@ params:
       multi_discrete:
 
     mlp:
-      units: [1024, 1024, 512]
+      units: [128, 128, 64] # [1024, 1024, 512]
       activation: elu # relu
       initializer:
         name: 'orthogonal_initializer'
@@ -26,7 +26,6 @@ params:
     #   layer_norm: True
     #   before_mlp: False
     #   concat_input: False
-
   config:
     name: zhikong
     env_name: zhikong
@@ -99,10 +98,18 @@ params:
       reward_scale: True
       reward_scale_rate: 20
       reward_defeat: -1
-
     player:
       render: False
       games_num: 200
       n_game_life: 1
       determenistic: True
-      device_name: 'cpu'
+      device: 'cpu'
+
+  player:
+    render: False
+    games_num: 200
+    n_game_life: 1
+    determenistic: True
+    device: 'cpu'
+    num_agents: 2
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/last_zhikong_ep_840_rew_3.6666722.pth'
