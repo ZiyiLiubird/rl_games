@@ -588,7 +588,7 @@ class AirCombatEnv(object):
         if np.sum(self.blue_death_missile) == self.blue_agents_num:
             self.blue_all_dead_missile = True
 
-        return (self.red_all_dead and self.blue_all_dead)
+        return (self.red_all_dead or self.blue_all_dead)
 
     def seed(self, seed=1):
         random.seed(seed)
