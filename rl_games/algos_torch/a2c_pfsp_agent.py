@@ -95,7 +95,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
                 actions_relabel = torch.FloatTensor(actions_relabel)
                 
             res_dict['actions'] = actions_relabel
-            
+            # print(f"res_dict action: {res_dict['actions']}")
             for k in update_list:
                 self.experience_buffer.update_data(k, n, res_dict[k])
             if self.has_central_value:
@@ -335,7 +335,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
                     checkpoint_name = self.config['name'] + '_ep_' + str(epoch_num) + '_rew_' + str(mean_rewards[0])
 
                     if self.save_freq > 0:
-                        if (epoch_num % self.save_freq == 0) and (mean_rewards <= self.last_mean_rewards):
+                        if (epoch_num % self.save_freq == 0):
                             self.save(os.path.join(self.nn_dir, 'last_' + checkpoint_name))
 
                     if mean_rewards[0] > self.last_mean_rewards and epoch_num >= self.save_best_after:
