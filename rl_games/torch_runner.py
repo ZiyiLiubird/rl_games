@@ -49,7 +49,7 @@ class Runner:
         self.player_factory.register_builder('a2c_continuous', lambda **kwargs : players.PpoPlayerContinuous(**kwargs))
         self.player_factory.register_builder('a2c_discrete', lambda **kwargs : players.PpoPlayerDiscrete(**kwargs))
         self.player_factory.register_builder('sac', lambda **kwargs : players.SACPlayer(**kwargs))
-        self.player_factory.register_builder('pfsp', lambda **kwargs : a2c_pfsp_player.SPPlayer(**kwargs))
+        self.player_factory.register_builder('pfsp', lambda **kwargs : players.PpoPlayerDiscrete(**kwargs))
 
         self.algo_observer = algo_observer if algo_observer else DefaultAlgoObserver()
         torch.backends.cudnn.benchmark = True

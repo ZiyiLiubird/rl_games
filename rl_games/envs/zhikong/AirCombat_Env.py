@@ -9,7 +9,7 @@ sys.path.append(parent_path)
 
 import math
 from copy import deepcopy
-from collections import OrderedDict
+from collections import OrderedDict, deque
 import time
 import random
 from ale_py import os
@@ -93,7 +93,8 @@ class AirCombatEnv(object):
         self.episode_limit =kwargs.get("episode_max_length", 1000)
         self.change_target = kwargs.get("change_target", False)
         self.single_agent_mode = kwargs.get("single_agent_mode", False)
-        
+        self.win_record = deque(maxlen=30)
+
         self.min_height = kwargs.get("min_height", 1000)
         # reward
         self.cum_rewards = 0
@@ -103,7 +104,7 @@ class AirCombatEnv(object):
         self.reward_death_value = kwargs.get("reward_death_value", 10)
         self.reward_scale = kwargs.get("reward_scale", True)
         self.reward_scale_rate = kwargs.get("reward_scale_rate", 20)
-        self.reward_defeat = kwargs.get("reward_defeat", -100)
+        self.reward_defeat = kwargs.get("reward_defeat", -1)
         self.reward_only_positive = kwargs.get("reward_only_positive", False)
         self.max_reward = (self.reward_win + 2 * self.reward_death_value * self.blue_agents_num
                            + 200*self.blue_agents_num)
@@ -153,7 +154,7 @@ class AirCombatEnv(object):
             self.act_feature_list = act_feature_list
             self.action_space = Tuple((Discrete(9), Discrete(9),
                                     Discrete(9), Discrete(5), Discrete(2), Discrete(2)))
-        
+
         self.action_map = {}
         self.action_map["fcs/aileron-cmd-norm"] = action_aileron
         self.action_map["fcs/elevator-cmd-norm"] = action_elevator
@@ -228,7 +229,7 @@ class AirCombatEnv(object):
         # print(f"action type: {type(ego_action)}")
         ego_action = ego_action.reshape(self.red_agents_num, -1)
         op_action = op_action.reshape(self.blue_agents_num, -1)
-        self.missile_launch(ego_action)
+        # self.missile_launch(ego_action)
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
 
@@ -250,8 +251,6 @@ class AirCombatEnv(object):
             for i in range(self.num_agents):
                 dones[i] = True
         elif self._episode_steps >= self.episode_limit:
-            terminated = True
-            bad_transition = True
             for i in range(self.num_agents):
                 dones[i] = True
         else:
@@ -264,13 +263,12 @@ class AirCombatEnv(object):
         obs_dict = {}
         obs_dict['obs'], obs_dict['obs_op'] = obs, obs_op
 
-
-        if self.blue_all_dead and not self.red_all_dead:
+        if self.blue_all_dead_missile and not self.red_all_dead:
             if self.reward_sparse and not self.single_agent_mode:
                 reward = 1
             else:
                 reward += self.reward_win
-        elif self.red_all_dead and not self.blue_all_dead:
+        elif self.red_all_dead and not self.blue_all_dead_missile:
             if self.reward_sparse and not self.single_agent_mode:
                 reward = -1
             else:
@@ -282,22 +280,26 @@ class AirCombatEnv(object):
         # print(f"********** reward: {reward} ************")
         
         rewards = [np.array(reward, dtype=np.float32)] * self.num_agents
-        if self.red_all_dead and not self.blue_all_dead:
+        if self.red_all_dead and not self.blue_all_dead_missile:
             infos['win'] = False
             infos['lose'] = True
             infos['draw'] = False
-        elif not self.red_all_dead and self.blue_all_dead:
+            self.win_record.append(0)
+        elif not self.red_all_dead and self.blue_all_dead_missile:
             infos['win'] = True
             infos['lose'] = False
             infos['draw'] = False
-        elif self.red_all_dead and self.blue_all_dead:
+            self.win_record.append(1)
+        elif self.red_all_dead and self.blue_all_dead_missile:
             infos['win'] = False
             infos['lose'] = False
             infos['draw'] = True
+            self.win_record.append(0.5)
         else:
             infos['win'] = False
             infos['lose'] = False
             infos['draw'] = False
+        infos['win_rate'] =  np.mean(self.win_record) if self.win_record else 0
 
         return obs_dict, rewards, dones, infos
 
@@ -559,6 +561,8 @@ class AirCombatEnv(object):
 
         self.red_all_dead = False
         self.blue_all_dead = False
+        self.red_all_dead_missile = False
+        self.blue_all_dead_missile = False
 
         for i, agent_name in enumerate(self.red_agents):
             if int(self.obs_dict['red'][agent_name]['DeathEvent']) != 99:
@@ -578,8 +582,13 @@ class AirCombatEnv(object):
         if np.sum(self.blue_death) == self.blue_agents_num:
             self.blue_all_dead = True
             # print(f"Blue all Dead !!!")
-            
-        return (self.red_all_dead or self.blue_all_dead)
+        if np.sum(self.red_death_missile) == self.red_agents_num:
+            self.red_all_dead_missile = True
+            # print(f"Red all Dead !!!")
+        if np.sum(self.blue_death_missile) == self.blue_agents_num:
+            self.blue_all_dead_missile = True
+
+        return (self.red_all_dead and self.blue_all_dead)
 
     def seed(self, seed=1):
         random.seed(seed)
@@ -612,9 +621,10 @@ class AirCombatEnv(object):
         area = 0
         height = 0
 
-        weapon_launch += np.sum(self.invalid_launch) * neg_scale
+        # weapon_launch += np.sum(self.invalid_launch) * neg_scale
         locked_adv, be_locked_adv = self.locked_reward()
-        locked += np.sum(locked_adv * 2 - be_locked_adv)
+        locked += np.sum(locked_adv) * 2
+        locked -= np.sum(be_locked_adv) * neg_scale
 
         height, area = self.area_reward()
         height = np.sum(height)
@@ -649,7 +659,7 @@ class AirCombatEnv(object):
         if self.reward_only_positive:
             reward = abs(delta_enemy + delta_deaths)
         else:
-            reward = delta_enemy + delta_deaths - delta_ally - weapon_launch + locked - height - area
+            reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale # no weapon,
 
         return reward
 
@@ -700,7 +710,7 @@ class AirCombatEnv(object):
             if int(self.obs_dict['red'][ego_agent_name]['SRAAMTargetLocked']) != 99 or \
                 int(self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget']) != 99:
                     locked_advantage[al_id] = 1
-        
+
         for e_id, op_agent_name in enumerate(self.blue_agents):
             if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
                 continue

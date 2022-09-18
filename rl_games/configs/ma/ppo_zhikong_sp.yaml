@@ -33,9 +33,9 @@ params:
     player_pool_type: ''
     player_pool_length: 3
     op_load_path: False
-    update_win_rate: 0.7
-    games_to_check: 100
-    score_to_win: 30
+    update_win_rate: 0.8
+    games_to_check: 10
+    score_to_win: 25
     max_epochs: 1000000
 
     max_update_steps: 5000
@@ -59,10 +59,12 @@ params:
     critic_coef: 1
     lr_schedule:  linear
     kl_threshold: 0.05
-    games_to_track: 100
+    games_to_track: 10
     normalize_input: False
     normalize_value: False
     seq_length: 5
+    save_frequency: 10
+    save_best_after: 10
     # self_play: True
 
     env_config:
@@ -70,8 +72,8 @@ params:
       ip: '127.0.1.1'
       worker_index: 888
       config_path: 'rl_games/configs/ma/ppo_zhikong_sp.yaml'
-      excute_path: '/home/lzy/lzy/human-ai/Air/8-23/2.4/Linux/Mono/Linux/ZK.x86_64'
-      playmode: 0
+      excute_path: '/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64' #'/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64'
+      playmode: 1
       num_agents: 2
       red_agents_num: 1
       blue_agents_num: 1
@@ -96,7 +98,7 @@ params:
       reward_negative_scale: 0.5
       reward_scale: True
       reward_scale_rate: 20
-      reward_defeat: 0
+      reward_defeat: -1
 
     player:
       render: False
