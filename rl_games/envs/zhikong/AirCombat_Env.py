@@ -19,10 +19,10 @@ from rl_games.envs.zhikong import comm_interface
 # from zhikong import comm_interface
 from .util import init_info, obs_feature_list, act_feature_list
 
-action_aileron = np.linspace(-1., 1., 5) # fcs/aileron-cmd-norm
-action_elevator = np.linspace(-1., 1., 5) # fcs/elevator-cmd-norm
+action_aileron = [0, 0.25, 0.5, 0.75, 1., -0.25, -0.5, -0.75, -1.] #np.linspace(-1., 1., 5) # fcs/aileron-cmd-norm
+action_elevator = [0, 0.25, 0.5, 0.75, 1., -0.25, -0.5, -0.75, -1.] #np.linspace(-1., 1., 5) # fcs/elevator-cmd-norm
 # action_rudder = np.linspace(-1., 1., 5) # fcs/rudder-cmd-norm
-action_throttle = np.linspace(0., 1., 3)  # fcs/throttle-cmd-norm
+action_throttle = [0., 0.25, 0.5, 0.75, 1.] #np.linspace(0., 1., 3)  # fcs/throttle-cmd-norm
 # action_change_target = [0, ]
 # actions_map = dict()
 # idx = 0
@@ -145,7 +145,7 @@ class AirCombatEnv(object):
         # (weapon-launch): 2
         # (switch-missile)： 2
         # (change-target): 0/1/12/012/0134. 99 default.
-        
+
         if self.change_target:
             self.act_feature_list = act_feature_list
             self.act_feature_list.append("change-target")
@@ -153,8 +153,8 @@ class AirCombatEnv(object):
                                     Discrete(5), Discrete(3), Discrete(2), Discrete(2),Discrete(5)))
         else:
             self.act_feature_list = act_feature_list
-            self.action_space = Tuple((Discrete(5), Discrete(5),
-                                      Discrete(3), Discrete(2), Discrete(2)))
+            self.action_space = Tuple((Discrete(9), Discrete(9),
+                                      Discrete(5), Discrete(2), Discrete(2)))
 
         self.action_map = {}
         self.action_map["fcs/aileron-cmd-norm"] = action_aileron
@@ -188,11 +188,6 @@ class AirCombatEnv(object):
         for agent_name in self.blue_agents:
             for act_feature in self.act_feature_list:
                 self.current_actions['blue'][agent_name][act_feature] = 0.
-
-        # setup attack variables
-        # self.locked_time = np.zeros((self.red_agents_num), dtype=np.float32)
-        # self.old_oracle = None
-        # self.cur_oracle = None
 
 
     def reset(self, init=False):
@@ -261,7 +256,7 @@ class AirCombatEnv(object):
         ego_action = ego_action.reshape(self.red_agents_num, -1)
         op_action = op_action.reshape(self.blue_agents_num, -1)
 
-        ego_action = self.preprocess_actions(ego_action)
+        # ego_action = self.preprocess_actions(ego_action)
         # print(f"ego_actions after: {ego_action}")
         # op_action = self.preprocess_actions(op_action, camp='blue')
         # self.missile_launch(ego_action)
@@ -478,20 +473,20 @@ class AirCombatEnv(object):
     def get_obs_agent(self, agent_name, camp='red'):
 
         
-        ctrl_state_feats = np.zeros((5), dtype=np.float32)
-        ctrl_cmd_feats = np.zeros((4), dtype=np.float32)
-        
+        # ctrl_state_feats = np.zeros((5), dtype=np.float32)
+        # ctrl_cmd_feats = np.zeros((4), dtype=np.float32)
+
         # ctrl state info
-        ctrl_state_feats[0] = self.obs_dict[camp][agent_name]['fcs/left-aileron-pos-norm']
-        ctrl_state_feats[1] = self.obs_dict[camp][agent_name]['fcs/right-aileron-pos-norm']
-        ctrl_state_feats[2] = self.obs_dict[camp][agent_name]['fcs/elevator-pos-norm']
-        ctrl_state_feats[3] = self.obs_dict[camp][agent_name]['fcs/rudder-pos-norm']
-        ctrl_state_feats[4] = self.obs_dict[camp][agent_name]['fcs/throttle-pos-norm']
-        # ctrl cmd info
-        ctrl_cmd_feats[0] = self.obs_dict[camp][agent_name]['fcs/aileron-cmd-norm']
-        ctrl_cmd_feats[1] = self.obs_dict[camp][agent_name]['fcs/elevator-cmd-norm']
-        ctrl_cmd_feats[2] = self.obs_dict[camp][agent_name]['fcs/rudder-cmd-norm']
-        ctrl_cmd_feats[3] = self.obs_dict[camp][agent_name]['fcs/throttle-cmd-norm']
+        # ctrl_state_feats[0] = self.obs_dict[camp][agent_name]['fcs/left-aileron-pos-norm']
+        # ctrl_state_feats[1] = self.obs_dict[camp][agent_name]['fcs/right-aileron-pos-norm']
+        # ctrl_state_feats[2] = self.obs_dict[camp][agent_name]['fcs/elevator-pos-norm']
+        # ctrl_state_feats[3] = self.obs_dict[camp][agent_name]['fcs/rudder-pos-norm']
+        # ctrl_state_feats[4] = self.obs_dict[camp][agent_name]['fcs/throttle-pos-norm']
+        # # ctrl cmd info
+        # ctrl_cmd_feats[0] = self.obs_dict[camp][agent_name]['fcs/aileron-cmd-norm']
+        # ctrl_cmd_feats[1] = self.obs_dict[camp][agent_name]['fcs/elevator-cmd-norm']
+        # ctrl_cmd_feats[2] = self.obs_dict[camp][agent_name]['fcs/rudder-cmd-norm']
+        # ctrl_cmd_feats[3] = self.obs_dict[camp][agent_name]['fcs/throttle-cmd-norm']
 
         if camp == 'red':
             agent_id_feats = np.zeros(self.red_agents_num, dtype=np.float32)
@@ -518,12 +513,16 @@ class AirCombatEnv(object):
             else:
                 agent_id_feats[self.blue_ni_mapping[agent_name]] = 1
 
+        # obs_all = np.concatenate([
+        #     ego_infos.flatten(), ctrl_state_feats.flatten(), 
+        #     ctrl_cmd_feats.flatten(), op_infos.flatten(),
+        #     threat_info.flatten(), agent_id_feats.flatten()
+        # ])
+
         obs_all = np.concatenate([
-            ego_infos.flatten(), ctrl_state_feats.flatten(), 
-            ctrl_cmd_feats.flatten(), op_infos.flatten(),
+            ego_infos.flatten(), op_infos.flatten(),
             threat_info.flatten(), agent_id_feats.flatten()
         ])
-
         return obs_all
 
     def _oracal_guiding_feature(self, agent_name, ego_camp, op_camp):
