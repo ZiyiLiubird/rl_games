@@ -19,7 +19,7 @@ obs_feature_list = ['position/h-sl-ft', 'attitude/pitch-rad', 'attitude/roll-rad
 print(f"len obs: {len(obs_feature_list)}")
 
 act_feature_list = ["fcs/aileron-cmd-norm", "fcs/elevator-cmd-norm",
-                    "fcs/rudder-cmd-norm", "fcs/throttle-cmd-norm", 
+                    "fcs/throttle-cmd-norm", 
                     "fcs/weapon-launch", "switch-missile",]
 
 hrl_act_feature_list = ["mode", "target_longdeg", "target_latdeg", "target_altitude_ft", "target_velocity",

@@ -21,7 +21,7 @@ from .util import init_info, obs_feature_list, act_feature_list
 
 action_aileron = np.linspace(-1., 1., 5) # fcs/aileron-cmd-norm
 action_elevator = np.linspace(-1., 1., 5) # fcs/elevator-cmd-norm
-action_rudder = np.linspace(-1., 1., 5) # fcs/rudder-cmd-norm
+# action_rudder = np.linspace(-1., 1., 5) # fcs/rudder-cmd-norm
 action_throttle = np.linspace(0., 1., 3)  # fcs/throttle-cmd-norm
 # action_change_target = [0, ]
 # actions_map = dict()
@@ -154,12 +154,12 @@ class AirCombatEnv(object):
         else:
             self.act_feature_list = act_feature_list
             self.action_space = Tuple((Discrete(5), Discrete(5),
-                                    Discrete(5), Discrete(3), Discrete(2), Discrete(2)))
+                                      Discrete(3), Discrete(2), Discrete(2)))
 
         self.action_map = {}
         self.action_map["fcs/aileron-cmd-norm"] = action_aileron
         self.action_map["fcs/elevator-cmd-norm"] = action_elevator
-        self.action_map["fcs/rudder-cmd-norm"] = action_rudder
+        # self.action_map["fcs/rudder-cmd-norm"] = action_rudder
         self.action_map["fcs/throttle-cmd-norm"] = action_throttle
 
         # 42 obs
@@ -220,25 +220,30 @@ class AirCombatEnv(object):
         # print(f"reset success!")
         return obs_dict
 
-    def preprocess_actions(self, ego_actions):
+    def preprocess_actions(self, ego_actions, camp='red'):
         """
         switch missile and weapon launch
         """
+        agents = self.camp_2_agents[camp]
         srmissile_nums = np.zeros((self.red_agents_num, 1), dtype=np.float32)
-        for al_id, agent_name in enumerate(self.red_agents):
-            if int(self.prev_obs_dict['red'][agent_name]['DeathEvent']) != 99:
+        for al_id, agent_name in enumerate(agents):
+            if int(self.prev_obs_dict[camp][agent_name]['DeathEvent']) != 99:
                 continue
-            srmissile_nums = self.prev_obs_dict['red'][agent_name]['SRAAMCurrentNum']
-            armissile_nums = self.prev_obs_dict['red'][agent_name]['AMRAAMCurrentNum']
-            aim_mode = self.prev_obs_dict['red'][agent_name]['AimMode']
-            if srmissile_nums == 0. and armissile_nums != 0 and aim_mode == 0:
+            srmissile_nums = self.prev_obs_dict[camp][agent_name]['SRAAMCurrentNum']
+            armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
+            aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
+            if srmissile_nums == 0 and armissile_nums != 0 and aim_mode == 0:
                 ego_actions[al_id][-1] = 1
             elif (armissile_nums == 0 and srmissile_nums != 0) and aim_mode == 1:
-                ego_actions[al_id][-1] =1
+                ego_actions[al_id][-1] = 1
             elif (armissile_nums != 0 and srmissile_nums !=0) and aim_mode == 0:
                 ego_actions[al_id][-1] = 1
-            sr_locked = self.prev_obs_dict['red'][agent_name]['SRAAMTargetLocked']
-            ar_locked = self.prev_obs_dict['red'][agent_name]['AMRAAMlockedTarget']
+            else:
+                ego_actions[al_id][-1] = 0
+            sr_locked = self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']
+            ar_locked = self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']
+            # print(sr_locked)
+            # print(ar_locked)
             if '99' not in str(sr_locked) or '99' not in str(ar_locked):
                 ego_actions[al_id][-2] = 1
 
@@ -250,18 +255,18 @@ class AirCombatEnv(object):
         self.prev_obs_dict = deepcopy(self.obs_dict)
         actions = deepcopy(action)
         ego_action, op_action = actions[0], actions[1]
+        
+        # print(f"ego_actions before: {ego_action}")
+        # op_action = np.array([[2,2,1,0,0]], dtype=float)
         ego_action = ego_action.reshape(self.red_agents_num, -1)
         op_action = op_action.reshape(self.blue_agents_num, -1)
 
-        # print(f"ego_action: {ego_action}")
-        # print(f"action type: {type(ego_action)}")
         ego_action = self.preprocess_actions(ego_action)
-        
+        # print(f"ego_actions after: {ego_action}")
+        # op_action = self.preprocess_actions(op_action, camp='blue')
         # self.missile_launch(ego_action)
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
-
-        # rewards = [np.zeros((1,), dtype=np.float32)] * self.num_agents
 
         self.process_actions(ego_action, op_action)
 
@@ -280,22 +285,18 @@ class AirCombatEnv(object):
         elif self._episode_steps >= self.episode_limit:
             for i in range(self.num_agents):
                 dones[i] = True
-        else:
-            for i in range(self.red_agents_num):
-                if self.red_death[i]:
-                    dones[i] = True
 
         obs, obs_op = self.get_obs()
 
         obs_dict = {}
         obs_dict['obs'], obs_dict['obs_op'] = obs, obs_op
 
-        if self.blue_all_dead_missile and not self.red_all_dead:
+        if self.blue_all_dead_missile and not self.red_all_dead_missile:
             if self.reward_sparse and not self.single_agent_mode:
                 reward = 1
             else:
                 reward += self.reward_win
-        elif self.red_all_dead and not self.blue_all_dead_missile:
+        elif self.red_all_dead_missile and not self.blue_all_dead_missile:
             if self.reward_sparse and not self.single_agent_mode:
                 reward = -1
             else:
@@ -306,21 +307,26 @@ class AirCombatEnv(object):
         self.cum_rewards += reward
 
         rewards = [np.array(reward, dtype=np.float32)] * self.num_agents
-        if self.red_all_dead and not self.blue_all_dead_missile:
+        if self.red_all_dead_missile and not self.blue_all_dead_missile:
             infos['win'] = False
             infos['lose'] = True
             infos['draw'] = False
             self.win_record.append(0)
-        elif not self.red_all_dead and self.blue_all_dead_missile:
+            # print(f"lose !!!!")
+        elif not self.red_all_dead_missile and self.blue_all_dead_missile:
             infos['win'] = True
             infos['lose'] = False
             infos['draw'] = False
             self.win_record.append(1)
-        elif self.red_all_dead and self.blue_all_dead_missile:
-            infos['win'] = False
-            infos['lose'] = False
-            infos['draw'] = True
-            self.win_record.append(0.5)
+            # print(f"win !!!")
+        # elif (self.red_all_dead_missile and self.blue_all_dead_missile_future) or \
+        #     (self.red_all_dead_missile_future and self.blue_all_dead_missile) or \
+        #         (self.red_all_dead_missile and self.blue_all_dead_missile):
+        #     infos['win'] = False
+        #     infos['lose'] = False
+        #     infos['draw'] = True
+        #     self.win_record.append(0.5)
+        #     print(f"draw !!!")
         else:
             infos['win'] = False
             infos['lose'] = False
@@ -586,28 +592,44 @@ class AirCombatEnv(object):
         self.blue_all_dead = False
         self.red_all_dead_missile = False
         self.blue_all_dead_missile = False
+        # self.red_all_dead_missile_future = False
+        # self.blue_all_dead_missile_future = False
+        # present_hitting_red = np.zeros((self.red_agents_num), dtype=np.float32)
+        # present_hitting_blue = np.zeros((self.blue_agents_num), dtype=np.float32)
+
+        # present_hitting_red_num = 0
+        # present_hitting_blue_num = 0
 
         for i, agent_name in enumerate(self.red_agents):
             if int(self.obs_dict['red'][agent_name]['DeathEvent']) != 99:
                 self.red_death[i] = 1
                 if int(self.obs_dict['red'][agent_name]['DeathEvent']) != 0:
                     self.red_death_missile[i] = 1
+            # if self.obs_dict['red'][agent_name]['IfPresenceHitting'] == 1:
+            #     present_hitting_red[i] = 1
 
         for i, agent_name in enumerate(self.blue_agents):
             if int(self.obs_dict['blue'][agent_name]['DeathEvent']) != 99:
                 self.blue_death[i] = 1
                 if int(self.obs_dict['blue'][agent_name]['DeathEvent']) != 0:
                     self.blue_death_missile[i] = 1
+            # if self.obs_dict['blue'][agent_name]['IfPresenceHitting'] == 1:
+            #     present_hitting_blue[i] = 1
+
+        # present_hitting_red_num = np.sum(present_hitting_red)
+        # present_hitting_blue_num = np.sum(present_hitting_blue)
 
         if np.sum(self.red_death) == self.red_agents_num:
             self.red_all_dead = True
-            # print(f"Red all Dead !!!")
+        # elif (self.red_agents_num - np.sum(self.red_death_missile)) == present_hitting_blue_num:
+        #     self.red_all_dead_missile_future = True
         if np.sum(self.blue_death) == self.blue_agents_num:
             self.blue_all_dead = True
-            # print(f"Blue all Dead !!!")
+        # elif (self.blue_agents_num - np.sum(self.blue_death_missile)) == present_hitting_red_num:
+        #     self.blue_all_dead_missile_future = True
+
         if np.sum(self.red_death_missile) == self.red_agents_num:
             self.red_all_dead_missile = True
-            # print(f"Red all Dead !!!")
         if np.sum(self.blue_death_missile) == self.blue_agents_num:
             self.blue_all_dead_missile = True
 

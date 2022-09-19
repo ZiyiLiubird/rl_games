@@ -13,7 +13,7 @@ params:
       multi_discrete:
 
     mlp:
-      units: [1024, 1024, 512] #[128, 128, 64] # [1024, 1024, 512]
+      units: [1024, 1024, 512] #[128, 128, 64] # [512, 512, 128] #
       activation: relu # relu
       initializer:
         name: 'orthogonal_initializer'
@@ -106,4 +106,4 @@ params:
     determenistic: False
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/last_zhikong_ep_880_rew_1.6666679.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/rl_games/runs/zhikong_19-11-40-55/nn/zhikong_1.0.pth'
