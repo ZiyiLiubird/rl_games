@@ -219,7 +219,6 @@ class AirCombatEnv(object):
         obs_dict = {}
         obs_dict['obs'], obs_dict['obs_op'] =obs, obs_op
 
-        # print(f"reset success!")
         return obs_dict
 
     def preprocess_actions(self, ego_actions, camp='red'):
@@ -244,10 +243,10 @@ class AirCombatEnv(object):
                 ego_actions[al_id][-1] = 0
             sr_locked = self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']
             ar_locked = self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']
-            # print(sr_locked)
-            # print(ar_locked)
             if '99' not in str(sr_locked) or '99' not in str(ar_locked):
                 ego_actions[al_id][-2] = 1
+            else:
+                ego_actions[al_id][-2] = 0
 
         return ego_actions
 
@@ -258,6 +257,8 @@ class AirCombatEnv(object):
         actions = deepcopy(action)
         ego_action, op_action = actions[0], actions[1]
 
+        # print("missile-launch: ", self.prev_obs_dict['red']['red_0']['missile-launch'])
+        # print("switch-missile: ", self.prev_obs_dict['red']['red_0']['switch-missile'])
         # print(f"ego_actions before: {ego_action}")
         # op_action = np.array([[2,2,1,0,0]], dtype=float)
         ego_action = ego_action.reshape(self.red_agents_num, -1)

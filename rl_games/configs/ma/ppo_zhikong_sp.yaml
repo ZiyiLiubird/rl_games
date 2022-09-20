@@ -84,7 +84,7 @@ params:
       role_reward_param_file: null
       save_frequency: 500
       single_agent_mode: False
-      min_height: 25000
+      min_height: 17000
       reward_win: 200
       reward_sparse: False
       reward_only_positive: False
@@ -107,4 +107,4 @@ params:
     determenistic: False
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/rl_games/runs/zhikong_20-10-11-54/nn/last_zhikong_ep_50_rew_14.142868.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/rl_games/runs/zhikong_20-11-42-05/nn/last_zhikong_ep_320_rew_2.8095195.pth'
