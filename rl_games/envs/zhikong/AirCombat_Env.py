@@ -95,7 +95,7 @@ class AirCombatEnv(object):
         self.single_agent_mode = kwargs.get("single_agent_mode", False)
         self.win_record = deque(maxlen=30)
 
-        self.min_height = kwargs.get("min_height", 1000)
+        self.min_height = kwargs.get("min_height", 26000)
         # reward
         self.cum_rewards = 0
         self.reward_win = kwargs.get("reward_win", 100)
@@ -256,7 +256,7 @@ class AirCombatEnv(object):
         ego_action = ego_action.reshape(self.red_agents_num, -1)
         op_action = op_action.reshape(self.blue_agents_num, -1)
 
-        # ego_action = self.preprocess_actions(ego_action)
+        ego_action = self.preprocess_actions(ego_action)
         # print(f"ego_actions after: {ego_action}")
         # op_action = self.preprocess_actions(op_action, camp='blue')
         # self.missile_launch(ego_action)
