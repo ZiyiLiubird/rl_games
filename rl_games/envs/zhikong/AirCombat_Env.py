@@ -1,5 +1,3 @@
-from distutils.log import info
-import enum
 import os.path as osp
 import sys
 
@@ -14,10 +12,11 @@ import time
 import random
 from ale_py import os
 import numpy as np
-from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
+from gym.spaces import Discrete, Box, Tuple
 from rl_games.envs.zhikong import comm_interface
 # from zhikong import comm_interface
-from .util import init_info, obs_feature_list, act_feature_list, act_ctrl1_feature_list, act_ctrl2_feature_list
+from .util import init_info, obs_feature_list, act_feature_list, \
+    act_ctrl1_feature_list, act_ctrl2_feature_list, continuous_act_feature_list
 
 action_aileron = [0, 0.25, 0.5, 0.75, 1., -0.25, -0.5, -0.75, -1.] #np.linspace(-1., 1., 5) # fcs/aileron-cmd-norm
 action_elevator = [0, 0.25, 0.5, 0.75, 1., -0.25, -0.5, -0.75, -1.] #np.linspace(-1., 1., 5) # fcs/elevator-cmd-norm
@@ -137,8 +136,6 @@ class AirCombatEnv(object):
         self.dict_reset = init_info(self.n_agents//2)
 
         # define action and observation spaces
-        assert (self.action_space_type == "MultiDiscrete"), "We only support MultiDiscrete action space now"
-
         # (aileron)：9
         # (elevator): 9
         # (rudder): 9
@@ -146,7 +143,9 @@ class AirCombatEnv(object):
         # (weapon-launch): 2
         # (switch-missile)： 2
         # (change-target): 0/1/12/012/0134. 99 default.
-        if self.ctrl_mode == 0:
+        self.action_map = {}
+
+        if self.action_space_type == "MultiDiscrete":
             self.act_feature_list = act_feature_list
 
             if self.change_target:
@@ -157,17 +156,13 @@ class AirCombatEnv(object):
                 self.action_space = Tuple((Discrete(9), Discrete(9),
                                         Discrete(5), Discrete(2), Discrete(2)))
 
-        elif self.ctrl_mode == 1:
-            self.act_feature_list = act_ctrl1_feature_list
+            self.action_map["fcs/aileron-cmd-norm"] = action_aileron
+            self.action_map["fcs/elevator-cmd-norm"] = action_elevator
+            self.action_map["fcs/throttle-cmd-norm"] = action_throttle
 
-        else:
-            self.act_feature_list = act_ctrl2_feature_list
-
-        self.action_map = {}
-        self.action_map["fcs/aileron-cmd-norm"] = action_aileron
-        self.action_map["fcs/elevator-cmd-norm"] = action_elevator
-        # self.action_map["fcs/rudder-cmd-norm"] = action_rudder
-        self.action_map["fcs/throttle-cmd-norm"] = action_throttle
+        elif self.action_space_type == "Continuous":
+            self.act_feature_list = continuous_act_feature_list
+            self.action_space = Box(low=-1.0, high=1.0, shape=(3,))
 
         # 42 obs
         shape = 82
@@ -254,6 +249,7 @@ class AirCombatEnv(object):
         """A single environment step. Returns reward, terminated, info."""
 
         self.prev_obs_dict = deepcopy(self.obs_dict)
+
         actions = deepcopy(action)
         ego_action, op_action = actions[0], actions[1]
 
@@ -268,6 +264,7 @@ class AirCombatEnv(object):
         # print(f"ego_actions after: {ego_action}")
         # op_action = self.preprocess_actions(op_action, camp='blue')
         self.missile_launch(ego_action)
+
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
 
