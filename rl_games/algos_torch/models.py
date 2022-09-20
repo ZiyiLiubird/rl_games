@@ -172,7 +172,7 @@ class ModelA2CMultiDiscrete(BaseModel):
             else:
                 if action_masks is None:
                     categorical = [Categorical(logits=logit) for logit in logits]
-                else:   
+                else:
                     categorical = [CategoricalMasked(logits=logit, masks=mask) for logit, mask in zip(logits, action_masks)]                
 
                 selected_action = [c.sample().long() for c in categorical]

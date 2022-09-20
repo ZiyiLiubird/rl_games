@@ -22,6 +22,10 @@ act_feature_list = ["fcs/aileron-cmd-norm", "fcs/elevator-cmd-norm",
                     "fcs/throttle-cmd-norm", 
                     "fcs/weapon-launch", "switch-missile",]
 
+act_ctrl1_feature_list = ["target_longdeg", "target_latdeg", "target_altitude_ft", "target_velocity"]
+
+act_ctrl2_feature_list = ["target_altitude_ft", "target_velocity", "target_track_deg"]
+
 hrl_act_feature_list = ["mode", "target_longdeg", "target_latdeg", "target_altitude_ft", "target_velocity",
                         "target_track_deg", "simulation/do_simple_trim", "change-target"]
 
