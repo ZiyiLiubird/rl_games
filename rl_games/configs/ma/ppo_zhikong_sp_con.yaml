@@ -30,8 +30,8 @@ params:
         name:  'None'
 
   config:
-    name: zhikong
-    env_name: zhikong
+    name: zhikong_con
+    env_name: zhikong_con
     player_pool_type: ''
     player_pool_length: 3
     op_load_path: False
@@ -51,7 +51,7 @@ params:
     grad_norm: 10
     entropy_coef: 0.02
     truncate_grads: True
-    env_name: zhikong
+    env_name: zhikong_con
     e_clip: 0.2
     clip_value: True
     num_actors: 3
@@ -70,10 +70,10 @@ params:
     # self_play: True
 
     env_config:
-      name: zhikong
+      name: zhikong_con
       ip: '127.0.1.1'
       worker_index: 888
-      config_path: 'rl_games/configs/ma/ppo_zhikong_sp.yaml'
+      config_path: 'rl_games/configs/ma/ppo_zhikong_sp_con.yaml'
       excute_path: '/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64' #'/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64'
       playmode: 1
       num_agents: 2

@@ -1,5 +1,4 @@
-from distutils.log import info
-import enum
+import os
 import os.path as osp
 import sys
 
@@ -12,7 +11,6 @@ from copy import deepcopy
 from collections import OrderedDict, deque, namedtuple
 import time
 import random
-from ale_py import os
 import numpy as np
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 # from rl_games.envs.zhikong import comm_interface
