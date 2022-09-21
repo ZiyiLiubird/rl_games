@@ -15,8 +15,9 @@ from rl_games.common import tr_helpers
 from rl_games.algos_torch import model_builder
 from rl_games.algos_torch import a2c_continuous
 from rl_games.algos_torch import a2c_discrete
-from .algos_torch import a2c_pfsp_agent
-from .algos_torch import a2c_pfsp_player
+from rl_games.algos_pfsp import a2c_pfsp_agent
+from rl_games.algos_pfsp import a2c_pfsp_continuous_agent
+from rl_games.algos_pfsp import a2c_pfsp_player
 from rl_games.algos_torch import players
 from rl_games.common.algo_observer import DefaultAlgoObserver
 from rl_games.algos_torch import sac_agent

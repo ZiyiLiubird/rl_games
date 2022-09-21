@@ -12,7 +12,7 @@ class ReplayBuffer():
         self._sample_head = 0
 
         return
-    
+
     def reset(self,):
         self._head = 0
         self._total_count = 0
@@ -52,7 +52,6 @@ class ReplayBuffer():
     def sample(self, n):
         total_count = self.get_total_count()
         buffer_size = self.get_buffer_size()
-        
     
     def _reset_sample_idx(self):
         buffer_size = self.get_buffer_size()

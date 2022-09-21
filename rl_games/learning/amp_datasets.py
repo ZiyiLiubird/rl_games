@@ -29,13 +29,12 @@
 import torch
 from rl_games.common import datasets
 
-
 class AMPDataset(datasets.PPODataset):
     def __init__(self, batch_size, minibatch_size, is_discrete, is_rnn, device, seq_len):
         super().__init__(batch_size, minibatch_size, is_discrete, is_rnn, device, seq_len)
         self._idx_buf = torch.randperm(batch_size)
         return
-    
+
     def update_mu_sigma(self, mu, sigma):	  
         raise NotImplementedError()
         return

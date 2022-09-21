@@ -5,9 +5,9 @@ import numpy as np
 import os
 import time
 import yaml
-from rl_games.algos_torch.pfsp_player_pool import PFSPPlayerPool, SinglePlayer, PFSPPlayerThreadPool, PFSPPlayerProcessPool, \
+from rl_games.algos_pfsp.pfsp_player_pool import PFSPPlayerPool, SinglePlayer, PFSPPlayerThreadPool, PFSPPlayerProcessPool, \
     PFSPPlayerVectorizedPool
-from rl_games.algos_torch import a2c_discrete
+from rl_games.algos_torch import a2c_continuous
 from rl_games.common.a2c_common import swap_and_flatten01
 from rl_games.algos_torch import torch_ext
 from rl_games.algos_torch import central_value
@@ -23,7 +23,7 @@ def save_config(args, save_path):
     file.close()
 
 
-class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
+class PFSPAgent(a2c_continuous.A2CAgent):
     def __init__(self, base_name, params):
         super().__init__(base_name, params)
         self.player_pool_type = self.config.get('player_pool_type', '')
@@ -404,7 +404,7 @@ class PFSPAgent(a2c_discrete.DiscreteA2CAgent):
         with torch.no_grad():
             if is_op:
                 res_dict = {
-                    "actions": torch.zeros((self.num_actors * self.num_opponent_agents, len(self.actions_num)), dtype=torch.long,
+                    "actions": torch.zeros((self.num_actors * self.num_opponent_agents, self.actions_num),
                                            device=self.device),
                     "values": torch.zeros((self.num_actors * self.num_opponent_agents, 1), device=self.device)
                 }

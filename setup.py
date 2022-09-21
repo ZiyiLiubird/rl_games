@@ -15,13 +15,13 @@ print(find_packages())
 setup(name='rl-games',
       long_description=README,
       long_description_content_type="text/markdown",
-      url="https://github.com/Denys88/rl_games",
+      url="https://github.com/ZiyiLiubird/rl_games",
       #packages=[package for package in find_packages() if package.startswith('rl_games')],
       packages = ['.','rl_games','docs'],
       package_data={'rl_games':['*','*/*','*/*/*'],'docs':['*','*/*','*/*/*'],},
       version='1.5.2',
       author='Denys Makoviichuk, Viktor Makoviichuk',
-      author_email='trrrrr97@gmail.com, victor.makoviychuk@gmail.com',
+      author_email='liuzy@mail.nankai.edu.cn, trrrrr97@gmail.com, victor.makoviychuk@gmail.com',
       license="MIT",
       classifiers=[
             "License :: OSI Approved :: MIT License",
@@ -45,6 +45,6 @@ setup(name='rl-games',
             'psutil',
             'pyyaml'
             # Optional dependencies
-            # 'ray>=1.1.0',
+            'ray>=1.1.0',
       ],
       )
