@@ -45,6 +45,7 @@ class Runner:
         self.algo_factory.register_builder('a2c_discrete', lambda **kwargs : a2c_discrete.DiscreteA2CAgent(**kwargs)) 
         self.algo_factory.register_builder('sac', lambda **kwargs: sac_agent.SACAgent(**kwargs))
         self.algo_factory.register_builder('pfsp', lambda **kwargs : a2c_pfsp_agent.PFSPAgent(**kwargs))
+        self.algo_factory.register_builder('pfsp_con', lambda **kwargs : a2c_pfsp_continuous_agent.PFSPAgent(**kwargs))
 
         self.player_factory = object_factory.ObjectFactory()
         self.player_factory.register_builder('a2c_continuous', lambda **kwargs : players.PpoPlayerContinuous(**kwargs))

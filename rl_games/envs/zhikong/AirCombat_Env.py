@@ -768,10 +768,8 @@ class AirCombatEnv(object):
         
         return locked_advantage, be_locked_advantage
 
-    # def reset_var(self):
-    #     self.locked_time = 0
-    #     self.old_oracle = None
-    #     self.cur_oracle = None
+    def get_number_of_agents(self):
+        return self.red_agents_num
 
     def render(self):
         pass

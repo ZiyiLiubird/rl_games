@@ -1,6 +1,6 @@
 params:  
   algo:
-    name: pfsp
+    name: pfsp_con
 
   model:
     name: continuous_a2c_logstd

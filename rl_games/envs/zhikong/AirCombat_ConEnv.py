@@ -670,6 +670,9 @@ class AirCombatConEnv(object):
         
         return locked_advantage, be_locked_advantage
 
+    def get_number_of_agents(self):
+        return self.red_agents_num
+
     def render(self):
         pass
 
