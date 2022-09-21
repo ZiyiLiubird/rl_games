@@ -71,6 +71,7 @@ params:
       red_agents_num: 1
       blue_agents_num: 1
       action_space_type: MultiDiscrete
+      ctrl_mode: 0
       apply_agent_ids: True
       central_value: False
       episode_max_length: 500
@@ -83,7 +84,7 @@ params:
       role_reward_param_file: null
       save_frequency: 500
       single_agent_mode: False
-      min_height: 1000
+      min_height: 17000
       reward_win: 200
       reward_sparse: False
       reward_only_positive: False
@@ -92,6 +93,7 @@ params:
       reward_scale: True
       reward_scale_rate: 20
       reward_defeat: -1
+
     player:
       render: False
       games_num: 200
@@ -106,4 +108,4 @@ params:
     determenistic: False
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/rl_games/runs/zhikong_19-11-40-55/nn/zhikong_1.0.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/rl_games/runs/zhikong_20-21-23-03/nn/last_zhikong_ep_1060_rew_15.417396.pth'
