@@ -115,7 +115,7 @@ class AMPBuilder(network_builder.A2CBuilder):
                     mlp_init(m.weight)
                     if getattr(m, "bias", None) is not None:
                         torch.nn.init.zeros_(m.bias)
-            
+
             torch.nn.init.uniform_(self._disc_logits.weight, -DISC_LOGIT_INIT_SCALE, DISC_LOGIT_INIT_SCALE)
             torch.nn.init.zeros_(self._disc_logits.bias)
 
