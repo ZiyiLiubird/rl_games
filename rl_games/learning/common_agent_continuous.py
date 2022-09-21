@@ -123,4 +123,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
     def train_epoch(self):
         play_time_start = time.time()
+        with torch.no_grad():
+            if self.is_rnn:
+                batch_dict = self.play_steps_rnn()
         
