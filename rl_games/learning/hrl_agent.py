@@ -45,7 +45,7 @@ from rl_games.common import vecenv
 import torch
 from torch import optim
 
-import rl_games.learning.common_agent_continuous as common_agent 
+import rl_games.learning.common_agent as common_agent 
 import rl_games.learning.ase_agent as ase_agent
 import rl_games.learning.ase_models as ase_models
 import rl_games.learning.ase_network_builder as ase_network_builder

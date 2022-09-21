@@ -1,20 +1,30 @@
 params:  
   algo:
-    name: pfsp
+    name: amp
 
   model:
-    name: multi_discrete_a2c # continuous_a2c_logstd
+    name: amp
 
   network:
-    name: actor_critic
+    name: amp
     separate: True
-    normalization: layer_norm
+    # normalization: layer_norm
     space:
-      multi_discrete:
+      continuous:
+        mu_activation: None
+        sigma_activation: None
+        mu_init:
+          name: default
+          scale: 0.02
+        sigma_init:
+          name: const_initializer
+          val: -2.9
+        fixed_sigma: True
+        learn_sigma: False
 
     mlp:
       units: [1024, 1024, 512] #[128, 128, 64] # [512, 512, 128] #
-      activation: relu # relu
+      activation: elu # relu
       initializer:
         name: 'orthogonal_initializer'
       regularizer:
