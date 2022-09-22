@@ -282,8 +282,7 @@ class PFSPAgent(a2c_continuous.A2CAgent):
 
         while True:
             epoch_num = self.update_epoch()
-            step_time, play_time, update_time, sum_time, a_losses, c_losses, entropies, kls, last_lr, lr_mul, win_rate = self.train_epoch()
-            win_rate = np.mean(win_rate)
+            step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul = self.train_epoch()
 
             # cleaning memory to optimize space
             self.dataset.update_values_dict(None)
@@ -323,10 +322,6 @@ class PFSPAgent(a2c_continuous.A2CAgent):
                         self.writer.add_scalar(rewards_name + '/iter'.format(i), mean_rewards[i], epoch_num)
                         self.writer.add_scalar(rewards_name + '/time'.format(i), mean_rewards[i], total_time)
 
-                    self.writer.add_scalar('win_rate/step', win_rate, frame)
-                    self.writer.add_scalar('win_rate/iter', win_rate, epoch_num)
-                    self.writer.add_scalar('win_rate/time', win_rate, total_time)
-
                     self.writer.add_scalar('episode_lengths/step', mean_lengths, frame)
                     self.writer.add_scalar('episode_lengths/iter', mean_lengths, epoch_num)
                     self.writer.add_scalar('episode_lengths/time', mean_lengths, total_time)
@@ -348,12 +343,6 @@ class PFSPAgent(a2c_continuous.A2CAgent):
                                 print('Network won!')
                                 self.save(os.path.join(self.nn_dir, checkpoint_name))
                                 should_exit = True
-
-                    if win_rate > self.last_win_rate:
-                        self.last_win_rate = win_rate
-                        if win_rate >= 0.65:
-                            print('saving next best win rate model: ', win_rate)
-                            self.save(os.path.join(self.nn_dir, self.config['name']+'_'+str(round(win_rate, 2))))
 
                 if epoch_num >= self.max_epochs:
                     if self.game_rewards.current_size == 0:

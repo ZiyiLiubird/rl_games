@@ -127,7 +127,9 @@ class AirCombatConEnv(object):
         # (change-target): 0/1/12/012/0134. 99 default.
 
         self.act_feature_list = continuous_act_feature_list
-        self.action_space = Box(low=-1.0, high=1.0, shape=(3,))
+        self.action_space = Box(low=np.array([-1.0, -1.0, 0.3], dtype=np.float32),
+                                high=np.array([1.0, 1.0, 1.0], dtype=np.float32), 
+                                shape=(3,))
 
         # 42 obs
         shape = 82
@@ -194,19 +196,19 @@ class AirCombatConEnv(object):
             armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
             aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
             if srmissile_nums == 0 and armissile_nums != 0 and aim_mode == 0:
-                ego_actions[al_id][-1] = 1
+                ego_actions[al_id][0] = 1
             elif (armissile_nums == 0 and srmissile_nums != 0) and aim_mode == 1:
-                ego_actions[al_id][-1] = 1
+                ego_actions[al_id][0] = 1
             elif (armissile_nums != 0 and srmissile_nums !=0) and aim_mode == 0:
-                ego_actions[al_id][-1] = 1
+                ego_actions[al_id][0] = 1
             else:
-                ego_actions[al_id][-1] = 0
+                ego_actions[al_id][0] = 0
             sr_locked = self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']
             ar_locked = self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']
             if '99' not in str(sr_locked) or '99' not in str(ar_locked):
-                ego_actions[al_id][-2] = 1
+                ego_actions[al_id][1] = 1
             else:
-                ego_actions[al_id][-2] = 0
+                ego_actions[al_id][1] = 0
 
         return ego_actions
 
@@ -219,11 +221,11 @@ class AirCombatConEnv(object):
         ego_action = ego_action.reshape(self.red_agents_num, -1)
         op_action = op_action.reshape(self.blue_agents_num, -1)
 
-        ego_weapon_actions = np.zeros((self.red_agents_num, 2))
-        op_weapon_actions = np.zeros((self.red_agents_num, 2))
+        ego_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
+        op_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
 
-        ego_weapon_actions = self.weapon_actions(ego_weapon_actions)
-        op_weapon_actions = self.weapon_actions(op_weapon_actions)
+        ego_weapon_actions = self.weapon_actions(ego_weapon_actions, camp='red')
+        op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
 
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
@@ -298,18 +300,18 @@ class AirCombatConEnv(object):
                         ego_weapon_action, op_weapon_action):
 
         for i in range(int(self.red_agents_num)):
-            self.current_actions['red']['red_'+str(i)]["fcs/aileron-cmd-norm"] = ego_action[i][0]
-            self.current_actions['red']['red_'+str(i)]["fcs/elevator-cmd-norm"] = ego_action[i][1]
-            self.current_actions['red']['red_'+str(i)]["fcs/throttle-cmd-norm"] = (ego_action[i][2] + 1) * 0.5
-            self.current_actions['red']['red_'+str(i)]["switch-missile"] = ego_weapon_action[0]
-            self.current_actions['red']['red_'+str(i)]["fcs/weapon-launch"] = ego_weapon_action[1]
+            self.current_actions['red']['red_'+str(i)]["fcs/aileron-cmd-norm"] = float(ego_action[i][0])
+            self.current_actions['red']['red_'+str(i)]["fcs/elevator-cmd-norm"] = float(ego_action[i][1])
+            self.current_actions['red']['red_'+str(i)]["fcs/throttle-cmd-norm"] = float(ego_action[i][2])
+            self.current_actions['red']['red_'+str(i)]["switch-missile"] =  float(ego_weapon_action[i][0])
+            self.current_actions['red']['red_'+str(i)]["fcs/weapon-launch"] =  float(ego_weapon_action[i][1])
 
         for i in range(int(self.blue_agents_num)):
-            self.current_actions['blue']['blue_'+str(i)]["fcs/aileron-cmd-norm"] = op_action[i][0]
-            self.current_actions['blue']['blue_'+str(i)]["fcs/elevator-cmd-norm"] = op_action[i][1]
-            self.current_actions['blue']['blue_'+str(i)]["fcs/throttle-cmd-norm"] = (op_action[i][2] + 1) * 0.5
-            self.current_actions['blue']['blue_'+str(i)]["switch-missile"] = op_weapon_action[0]
-            self.current_actions['blue']['blue_'+str(i)]["fcs/weapon-launch"] = op_weapon_action[1]
+            self.current_actions['blue']['blue_'+str(i)]["fcs/aileron-cmd-norm"] = float(op_action[i][0])
+            self.current_actions['blue']['blue_'+str(i)]["fcs/elevator-cmd-norm"] = float(op_action[i][1])
+            self.current_actions['blue']['blue_'+str(i)]["fcs/throttle-cmd-norm"] = float(op_action[i][2])
+            self.current_actions['blue']['blue_'+str(i)]["switch-missile"] = float(op_weapon_action[i][0])
+            self.current_actions['blue']['blue_'+str(i)]["fcs/weapon-launch"] = float(op_weapon_action[i][1])
 
     def get_obs(self):
 
@@ -484,7 +486,8 @@ class AirCombatConEnv(object):
             d_azimuth_red = azimuth - self.obs_dict[ego_camp][agent_name]['attitude/psi-deg']
             threat_infos[i, 1] = d_elevation_red
             threat_infos[i, 2] = d_azimuth_red
-            
+            # print('d_elevation_red: ', d_elevation_red)
+            # print('d_azimuth_red', d_azimuth_red)
             # 对手视角，该部分按道理应该根据速度计算，但是为了简化计算过程，将位姿直接近似成了速度的方向
             elevation, azimuth = self.look_vector((op_x, op_y, op_z), (ego_x, ego_y, ego_z))
             d_elevation_blue = elevation - self.obs_dict[op_camp][op_name]['attitude/pitch-rad'] * 180 / 3.14

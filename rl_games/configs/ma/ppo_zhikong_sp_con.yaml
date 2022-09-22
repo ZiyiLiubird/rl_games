@@ -39,7 +39,7 @@ params:
     games_to_check: 10
     score_to_win: 30
     max_epochs: 1000000
-
+    bounds_loss_coef: 10
     max_update_steps: 5000
     reward_shaper:
         scale_value: 1
@@ -54,6 +54,7 @@ params:
     env_name: zhikong_con
     e_clip: 0.2
     clip_value: True
+    clip_actions: True
     num_actors: 3
     horizon_length: 500
     minibatch_size: 500
@@ -74,8 +75,8 @@ params:
       ip: '127.0.1.1'
       worker_index: 888
       config_path: 'rl_games/configs/ma/ppo_zhikong_sp_con.yaml'
-      excute_path: '/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64' #'/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64'
-      playmode: 1
+      excute_path: '/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/NoLinux/ZK.x86_64' #'/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64'
+      playmode: 0
       num_agents: 2
       red_agents_num: 1
       blue_agents_num: 1
@@ -114,7 +115,7 @@ params:
     render: False
     games_num: 200
     n_game_life: 1
-    determenistic: False
+    determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/rl_games/runs/zhikong_20-21-23-03/nn/last_zhikong_ep_1060_rew_15.417396.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/rl_games/runs/zhikong_con_21-23-33-50/nn/last_zhikong_con_ep_30_rew_13.604967.pth'
