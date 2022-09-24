@@ -132,9 +132,9 @@ class AirCombatConEnv(object):
                                 shape=(3,))
 
         # 42 obs
-        shape = 82
+        shape = 86
         if self.red_agents_num == 1:
-            shape = 82
+            shape = 86
         elif self.red_agents_num == 2:
             shape = 173
         elif self.red_agents_num == 3:
@@ -432,6 +432,11 @@ class AirCombatConEnv(object):
 
 
     def get_obs_agent(self, agent_name, camp='red'):
+        ctrl_state_feats = np.zeros((4), dtype=np.float32)
+        ctrl_state_feats[0] = self.obs_dict[camp][agent_name]['fcs/left-aileron-pos-norm']
+        ctrl_state_feats[1] = self.obs_dict[camp][agent_name]['fcs/right-aileron-pos-norm']
+        ctrl_state_feats[2] = self.obs_dict[camp][agent_name]['fcs/elevator-pos-norm']
+        ctrl_state_feats[3] = self.obs_dict[camp][agent_name]['fcs/throttle-pos-norm']
 
         if camp == 'red':
             agent_id_feats = np.zeros(self.red_agents_num, dtype=np.float32)
@@ -454,7 +459,7 @@ class AirCombatConEnv(object):
                 agent_id_feats[self.blue_ni_mapping[agent_name]] = 1
 
         obs_all = np.concatenate([
-            ego_infos.flatten(), op_infos.flatten(),
+            ego_infos.flatten(), ctrl_state_feats.flatten(), op_infos.flatten(),
             threat_info.flatten(), agent_id_feats.flatten()
         ])
         return obs_all
