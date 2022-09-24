@@ -28,7 +28,7 @@ class ReplayBuffer():
     def store(self, data_dict):
         if (self._data_buf is None):
             self._init_data_buf(data_dict)
-        
+
         n = next(iter(data_dict.values())).shape[0]
         buffer_size = self.get_buffer_size
         assert (n <= buffer_size)

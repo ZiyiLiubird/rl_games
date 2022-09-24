@@ -1,6 +1,6 @@
 params:  
   algo:
-    name: amp
+    name: amp_pfsp
 
   model:
     name: amp
@@ -39,18 +39,17 @@ params:
     update_win_rate: 0.8
     games_to_check: 10
     score_to_win: 30
-    max_epochs: 1000000
-
+    max_epochs: 10000
     max_update_steps: 5000
     reward_shaper:
         scale_value: 1
     normalize_advantage: True
     gamma: 0.99
     tau: 0.95
-    learning_rate: 3e-4
+    learning_rate: 2e-5
     save_win_threshold: 0.005
-    grad_norm: 10
-    entropy_coef: 0.02
+    grad_norm: 1.5
+    entropy_coef: 0.0
     truncate_grads: True
     env_name: zhikong
     e_clip: 0.2
@@ -58,17 +57,40 @@ params:
     num_actors: 3
     horizon_length: 500
     minibatch_size: 500
-    mini_epochs: 2
-    critic_coef: 1
+    mini_epochs: 6
+    critic_coef: 5
     lr_schedule:  linear
     kl_threshold: 0.05
     games_to_track: 10
     normalize_input: False
     normalize_value: False
     seq_length: 5
-    save_frequency: 10
-    save_best_after: 10
-    # self_play: True
+    save_frequency: 50
+    save_best_after: 50
+
+    multi_gpu: False
+    mixed_precision: False
+    lr_schedule: constant
+    print_stats: True
+    # truncate_grads: False
+    ppo: True
+    clip_value: False
+    bounds_loss_coef: 10
+    amp_obs_demo_buffer_size: 200000
+    amp_replay_buffer_size: 200000
+    amp_replay_keep_prob: 0.01
+    amp_batch_size: 512
+    amp_minibatch_size: 4096
+    disc_coef: 5
+    disc_logit_reg: 0.01
+    disc_grad_penalty: 5
+    disc_reward_scale: 2
+    disc_weight_decay: 0.0001
+    normalize_amp_input: True
+    enable_eps_greedy: False
+    # important
+    task_reward_w: 0.0
+    disc_reward_w: 1.0
 
     env_config:
       name: zhikong
@@ -103,6 +125,7 @@ params:
       reward_scale: True
       reward_scale_rate: 20
       reward_defeat: -1
+      numAMPObsSteps: 10
 
     player:
       render: False

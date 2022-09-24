@@ -2,6 +2,10 @@ from rl_games.common import object_factory
 import rl_games.algos_torch
 from rl_games.algos_torch import network_builder
 from rl_games.algos_torch import models
+from rl_games.learning import amp_models
+from rl_games.learning import amp_network_builder
+from rl_games.learning import ase_models
+from rl_games.learning import ase_network_builder
 
 NETWORK_REGISTRY = {}
 MODEL_REGISTRY = {}
@@ -22,6 +26,8 @@ class NetworkBuilder:
                                               lambda **kwargs: network_builder.A2CResnetBuilder())
         self.network_factory.register_builder('rnd_curiosity', lambda **kwargs: network_builder.RNDCuriosityBuilder())
         self.network_factory.register_builder('soft_actor_critic', lambda **kwargs: network_builder.SACBuilder())
+        self.network_factory.register_builder('amp', lambda **kwargs: amp_network_builder.AMPBuilder())
+        self.network_factory.register_builder('ase', lambda **kwargs: ase_network_builder.ASEBuilder())
 
     def load(self, params):
         network_name = params['name']
@@ -46,6 +52,9 @@ class ModelBuilder:
                                             lambda network, **kwargs: models.ModelSACContinuous(network))
         self.model_factory.register_builder('central_value',
                                             lambda network, **kwargs: models.ModelCentralValue(network))
+        self.model_factory.register_builder('amp', lambda network, **kwargs: amp_models.ModelAMPContinuous(network))
+        self.model_factory.register_builder('ase', lambda network, **kwargs: ase_models.ModelASEContinuous(network))
+
         self.network_builder = NetworkBuilder()
 
     def get_network_builder(self):

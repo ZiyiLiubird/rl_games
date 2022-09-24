@@ -17,11 +17,6 @@ from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from zhikong import comm_interface
 from .util import init_info, obs_feature_list, act_feature_list
 
-action_aileron = np.linspace(-1., 1., 9) # fcs/aileron-cmd-norm
-action_elevator = np.linspace(-1., 1., 9) # fcs/elevator-cmd-norm
-action_rudder = np.linspace(-1., 1., 9) # fcs/rudder-cmd-norm
-action_throttle = np.linspace(0., 1., 5)  # fcs/throttle-cmd-norm
-
 
 
 class AirCollectEnv(object):
@@ -106,12 +101,6 @@ class AirCollectEnv(object):
             self.act_feature_list = act_feature_list
             self.action_space = Tuple((Discrete(9), Discrete(9),
                                     Discrete(9), Discrete(5), Discrete(2), Discrete(2)))
-
-        self.action_map = {}
-        self.action_map["fcs/aileron-cmd-norm"] = action_aileron
-        self.action_map["fcs/elevator-cmd-norm"] = action_elevator
-        self.action_map["fcs/rudder-cmd-norm"] = action_rudder
-        self.action_map["fcs/throttle-cmd-norm"] = action_throttle
 
         # 42 obs
         shape = 91

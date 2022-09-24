@@ -477,15 +477,15 @@ class AirCombatEnv(object):
     def get_obs_agent(self, agent_name, camp='red'):
 
         
-        # ctrl_state_feats = np.zeros((5), dtype=np.float32)
+        ctrl_state_feats = np.zeros((5), dtype=np.float32)
         # ctrl_cmd_feats = np.zeros((4), dtype=np.float32)
 
         # ctrl state info
-        # ctrl_state_feats[0] = self.obs_dict[camp][agent_name]['fcs/left-aileron-pos-norm']
-        # ctrl_state_feats[1] = self.obs_dict[camp][agent_name]['fcs/right-aileron-pos-norm']
-        # ctrl_state_feats[2] = self.obs_dict[camp][agent_name]['fcs/elevator-pos-norm']
-        # ctrl_state_feats[3] = self.obs_dict[camp][agent_name]['fcs/rudder-pos-norm']
-        # ctrl_state_feats[4] = self.obs_dict[camp][agent_name]['fcs/throttle-pos-norm']
+        ctrl_state_feats[0] = self.obs_dict[camp][agent_name]['fcs/left-aileron-pos-norm']
+        ctrl_state_feats[1] = self.obs_dict[camp][agent_name]['fcs/right-aileron-pos-norm']
+        ctrl_state_feats[2] = self.obs_dict[camp][agent_name]['fcs/elevator-pos-norm']
+        ctrl_state_feats[3] = self.obs_dict[camp][agent_name]['fcs/rudder-pos-norm']
+        ctrl_state_feats[4] = self.obs_dict[camp][agent_name]['fcs/throttle-pos-norm']
         # # ctrl cmd info
         # ctrl_cmd_feats[0] = self.obs_dict[camp][agent_name]['fcs/aileron-cmd-norm']
         # ctrl_cmd_feats[1] = self.obs_dict[camp][agent_name]['fcs/elevator-cmd-norm']
@@ -524,7 +524,7 @@ class AirCombatEnv(object):
         # ])
 
         obs_all = np.concatenate([
-            ego_infos.flatten(), op_infos.flatten(),
+            ego_infos.flatten(), ctrl_state_feats.flatten(), op_infos.flatten(),
             threat_info.flatten(), agent_id_feats.flatten()
         ])
         return obs_all
