@@ -127,6 +127,8 @@ params:
       reward_defeat: -1
       numAMPObsSteps: 10
 
+      amp_batch_size: 50
+
     player:
       render: False
       games_num: 200

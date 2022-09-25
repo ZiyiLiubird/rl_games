@@ -19,7 +19,9 @@ from rl_games.algos_pfsp import a2c_pfsp_agent
 from rl_games.algos_pfsp import a2c_pfsp_player
 from rl_games.algos_pfsp import a2c_pfsp_continuous_agent
 from rl_games.algos_pfsp import a2c_pfsp_continuous_player
-from rl_games.algos_pfsp import amp_pfsp_continuous_agent
+from rl_games.algos_pfsp import amp_pfsp_agent
+from rl_games.algos_pfsp import hrl_pfsp_agent
+from rl_games.learning import ase_agent
 
 from rl_games.algos_torch import players
 from rl_games.common.algo_observer import DefaultAlgoObserver
@@ -49,7 +51,9 @@ class Runner:
         self.algo_factory.register_builder('sac', lambda **kwargs: sac_agent.SACAgent(**kwargs))
         self.algo_factory.register_builder('pfsp', lambda **kwargs : a2c_pfsp_agent.PFSPAgent(**kwargs))
         self.algo_factory.register_builder('pfsp_con', lambda **kwargs : a2c_pfsp_continuous_agent.PFSPAgent(**kwargs))
-        self.algo_factory.register_builder('amp_pfsp', lambda **kwargs : amp_pfsp_continuous_agent.PFSPAgent(**kwargs))
+        self.algo_factory.register_builder('amp_pfsp', lambda **kwargs : amp_pfsp_agent.PFSPAgent(**kwargs))
+        self.algo_factory.register_builder('ase', lambda **kwargs : ase_agent.ASEAgent(**kwargs))
+        self.algo_factory.register_builder('hrl_pfsp', lambda **kwargs : hrl_pfsp_agent.HRLSPAgent(**kwargs))
 
         self.player_factory = object_factory.ObjectFactory()
         self.player_factory.register_builder('a2c_continuous', lambda **kwargs : players.PpoPlayerContinuous(**kwargs))
