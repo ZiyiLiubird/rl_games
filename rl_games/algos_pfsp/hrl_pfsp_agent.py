@@ -9,12 +9,12 @@ from .pfsp_player_pool import PFSPPlayerPool, SinglePlayer, PFSPPlayerThreadPool
 from rl_games.common.a2c_common import swap_and_flatten01
 from rl_games.algos_torch import torch_ext
 from rl_games.algos_torch import central_value
-from isaacgym.torch_utils import *
+# from isaacgym.torch_utils import *
 import torch
 from torch import optim
 from tensorboardX import SummaryWriter
 import torch.distributed as dist
-import timechamber.ase.hrl_agent as hrl_agent
+import rl_games.learning.hrl_agent as hrl_agent
 
 class HRLSPAgent(hrl_agent.HRLAgent):
     def __init__(self, base_name, params):

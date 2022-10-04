@@ -118,4 +118,4 @@ params:
     determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/9-24/last_zhikong_con_ep_430_rew_17.147545.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/9-24/last_zhikong_con_ep_2570_rew_12.714963.pth'

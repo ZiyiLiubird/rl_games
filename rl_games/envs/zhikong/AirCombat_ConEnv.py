@@ -225,7 +225,7 @@ class AirCombatConEnv(object):
         op_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
 
         ego_weapon_actions = self.weapon_actions(ego_weapon_actions, camp='red')
-        op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
+        # op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
 
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
@@ -429,7 +429,6 @@ class AirCombatConEnv(object):
             ego_infos[i, 58+int(self.obs_dict[camp][name]['MissileAlert'])] = 1
 
         return ego_infos.flatten()
-
 
     def get_obs_agent(self, agent_name, camp='red'):
         ctrl_state_feats = np.zeros((4), dtype=np.float32)
