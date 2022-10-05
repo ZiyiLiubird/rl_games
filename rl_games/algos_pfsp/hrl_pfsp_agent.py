@@ -16,6 +16,7 @@ from tensorboardX import SummaryWriter
 import torch.distributed as dist
 import rl_games.learning.hrl_agent as hrl_agent
 
+
 class HRLSPAgent(hrl_agent.HRLAgent):
     def __init__(self, base_name, params):
         params['config']['device'] = params['device']
@@ -52,13 +53,7 @@ class HRLSPAgent(hrl_agent.HRLAgent):
         assert self.num_actors % self.max_his_player_num == 0
 
     def _build_player_pool(self, params):
-        if self.player_pool_type == 'multi_thread':
-            return PFSPPlayerProcessPool(max_length=self.max_his_player_num,
-                                         device=self.device)
-        elif self.player_pool_type == 'multi_process':
-            return PFSPPlayerThreadPool(max_length=self.max_his_player_num,
-                                        device=self.device)
-        elif self.player_pool_type == 'vectorized':
+        if self.player_pool_type == 'vectorized':
             vector_model_config = self.base_model_config
             vector_model_config['num_envs'] = self.num_actors * self.num_opponent_agents
             vector_model_config['population_size'] = self.max_his_player_num
@@ -155,19 +150,20 @@ class HRLSPAgent(hrl_agent.HRLAgent):
         batch_dict['step_time'] = step_time
         return batch_dict
 
-    def env_step(self, actions):
-        actions = self.preprocess_actions(actions)
+    def env_step(self, ego_actions, op_actions):
+
+        ego_actions, op_actions = self.preprocess_actions(ego_actions), self.preprocess_actions(op_actions)
         obs = self.obs['obs']
-        # TODO
-        obs_op = self.obs['obs'] # self.obs['obs_op']
+        obs_op = self.obs['obs_op']
 
         rewards = 0.0
         disc_rewards = 0.0
         done_count = 0.0
         terminate_count = 0.0
         for t in range(self._llc_steps):
-            llc_actions = self._compute_llc_action(obs, actions)
-            obs, curr_rewards, curr_dones, infos = self.vec_env.step(llc_actions)
+            llc_ego_actions = self._compute_llc_action(obs, ego_actions)
+            llc_op_actions = self._compute_llc_action(obs_op, op_actions)
+            obs_dict, curr_rewards, curr_dones, infos = self.vec_env.step([llc_ego_actions, llc_op_actions])
 
             rewards += curr_rewards
             done_count += curr_dones
@@ -176,6 +172,9 @@ class HRLSPAgent(hrl_agent.HRLAgent):
             amp_obs = infos['amp_obs']
             curr_disc_reward = self._calc_disc_reward(amp_obs)
             disc_rewards += curr_disc_reward
+            
+            obs = obs_dict['obs']
+            obs_op = obs_dict['obs_op']
         
         rewards /= self._llc_steps
         disc_rewards /= self._llc_steps
@@ -200,23 +199,10 @@ class HRLSPAgent(hrl_agent.HRLAgent):
                 dones).to(self.ppo_device), infos
 
     def env_reset(self, env_ids=None):
-        obs = self.vec_env.reset(env_ids)
+        obs = self.vec_env.reset(init=True)
         obs = self.obs_to_tensors(obs)
 
-        # TODO
-        obs_dict = {}
-        obs_dict['obs_op'] = obs
-        obs_dict['obs'] = obs
-        
-        if (env_ids is None):
-            num_envs = self.vec_env.env.task.num_envs
-            env_ids = to_torch(np.arange(num_envs), dtype=torch.long, device=self.ppo_device)
-
-        if (len(env_ids) > 0):
-            self._reset_latents(env_ids)
-            self._reset_latent_step_count(env_ids)
-
-        return obs_dict
+        return obs
 
     def train(self):
         self.init_tensors()

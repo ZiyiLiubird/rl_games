@@ -44,3 +44,11 @@ class ModelHRLContinuous(ModelA2CContinuousLogStd):
         def __init__(self, a2c_network):
             super().__init__(a2c_network)
             return
+
+        def eval_critic(self, obs):
+            processed_obs = self.norm_obs(obs)
+            value = self.a2c_network.eval_critic(processed_obs)
+            values = self.unnorm_value(value)
+            return values
+            
+            

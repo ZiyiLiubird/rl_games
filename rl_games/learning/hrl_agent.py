@@ -53,7 +53,8 @@ import rl_games.learning.ase_network_builder as ase_network_builder
 from tensorboardX import SummaryWriter
 
 class HRLAgent(common_agent.CommonAgent):
-    def __init__(self, base_name, config):
+    def __init__(self, base_name, params):
+        config = params['config']
         with open(os.path.join(os.getcwd(), config['llc_config']), 'r') as f:
             llc_config = yaml.load(f, Loader=yaml.SafeLoader)
             llc_config_params = llc_config['params']

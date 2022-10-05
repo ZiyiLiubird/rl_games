@@ -94,7 +94,7 @@ class PFSPAgent(amp_agent.AMPAgent):
             actions_relabel = infos['action_relabel']
             if isinstance(actions_relabel, np.ndarray):
                 actions_relabel = torch.FloatTensor(actions_relabel)
-                
+
             res_dict['actions'] = actions_relabel
             # print(f"res_dict action: {res_dict['actions']}")
             for k in update_list:

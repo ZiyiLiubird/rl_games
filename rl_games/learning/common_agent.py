@@ -51,9 +51,9 @@ import rl_games.learning.amp_datasets as amp_datasets
 from tensorboardX import SummaryWriter
 
 class CommonAgent(a2c_continuous.A2CAgent):
-    def __init__(self, base_name, config):
-        a2c_common.A2CBase.__init__(self, base_name, config)
-
+    def __init__(self, base_name, params):
+        a2c_common.A2CBase.__init__(self, base_name, params)
+        self.config = config = params['config']
         self._load_config_params(config)
 
         self.is_discrete = False
@@ -72,10 +72,6 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
         self.optimizer = optim.Adam(self.model.parameters(), float(self.last_lr), eps=1e-08, weight_decay=self.weight_decay)
 
-        if self.normalize_input:
-            obs_shape = torch_ext.shape_whc_to_cwh(self.obs_shape)
-            self.running_mean_std = RunningMeanStd(obs_shape).to(self.ppo_device)
-
         if self.has_central_value:
             cv_config = {
                 'state_shape' : torch_ext.shape_whc_to_cwh(self.state_shape), 
@@ -86,12 +82,17 @@ class CommonAgent(a2c_continuous.A2CAgent):
                 'num_actors' : self.num_actors, 
                 'num_actions' : self.actions_num, 
                 'seq_len' : self.seq_len, 
-                'model' : self.central_value_config['network'],
+                'normalize_value' : self.normalize_value,
+                'network' : self.central_value_config['network'],
                 'config' : self.central_value_config, 
                 'writter' : self.writer,
+                'max_epochs' : self.max_epochs,
                 'multi_gpu' : self.multi_gpu
             }
             self.central_value_net = central_value.CentralValueTrain(**cv_config).to(self.ppo_device)
+        
+        if self.normalize_value:
+            self.value_mean_std = self.central_value_net.model.value_mean_std if self.has_central_value else self.model.value_mean_std
 
         self.use_experimental_cv = self.config.get('use_experimental_cv', True)
         self.dataset = amp_datasets.AMPDataset(self.batch_size, self.minibatch_size, self.is_discrete, self.is_rnn, self.ppo_device, self.seq_len)
@@ -228,7 +229,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
             ep_kls = []
             for i in range(len(self.dataset)):
                 curr_train_info = self.train_actor_critic(self.dataset[i])
-                
+
                 if self.schedule_type == 'legacy':  
                     if self.multi_gpu:
                         curr_train_info['kl'] = self.hvd.average_value(curr_train_info['kl'], 'ep_kls')
@@ -242,7 +243,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
                 else:
                     for k, v in curr_train_info.items():
                         train_info[k].append(v)
-            
+
             av_kls = torch_ext.mean_list(train_info['kl'])
 
             if self.schedule_type == 'standard':
@@ -349,8 +350,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
         advantages = self._calc_advs(batch_dict)
 
         if self.normalize_value:
+            self.value_mean_std.train()
             values = self.value_mean_std(values)
             returns = self.value_mean_std(returns)
+            self.value_mean_std.eval()
 
         dataset_dict = {}
         dataset_dict['old_values'] = values
@@ -524,10 +527,8 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.model.eval()
         obs = obs_dict['obs']
         processed_obs = self._preproc_obs(obs)
-        value = self.model.a2c_network.eval_critic(processed_obs)
+        value = self.model.eval_critic(processed_obs)
 
-        if self.normalize_value:
-            value = self.value_mean_std(value, True)
         return value
 
     def _actor_loss(self, old_action_log_probs_batch, action_log_probs, advantage, curr_e_clip):
