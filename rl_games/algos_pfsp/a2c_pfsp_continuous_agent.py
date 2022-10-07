@@ -78,24 +78,14 @@ class PFSPAgent(a2c_continuous.A2CAgent):
             else:
                 res_dict_op = self.get_action_values(self.obs, is_op=True)
                 res_dict = self.get_action_values(self.obs)
-            # print(f"self.obs shape: {self.obs['obs'].shape}")
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
             self.experience_buffer.update_data('dones', n, self.dones)
-            # for k in update_list:
-            #     self.experience_buffer.update_data(k, n, res_dict[k])
-            # if self.has_central_value:
-            #     self.experience_buffer.update_data('states', n, self.obs['states'])
 
             if self.player_pool_type == 'multi_thread':
                 self.player_pool.thread_pool.shutdown()
             step_time_start = time.time()
             self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'], res_dict_op['actions'])
-            actions_relabel = infos['action_relabel']
-            if isinstance(actions_relabel, np.ndarray):
-                actions_relabel = torch.FloatTensor(actions_relabel)
-                
-            res_dict['actions'] = actions_relabel
-            # print(f"res_dict action: {res_dict['actions']}")
+
             for k in update_list:
                 self.experience_buffer.update_data(k, n, res_dict[k])
             if self.has_central_value:
@@ -133,7 +123,6 @@ class PFSPAgent(a2c_continuous.A2CAgent):
 
             self.current_rewards = self.current_rewards * not_dones.unsqueeze(1)
             self.current_lengths = self.current_lengths * not_dones
-            # print(f"infos: {infos}")
             
             self.player_pool.update_player_metric(infos=infos)
             self.resample_op(env_done_indices.flatten())

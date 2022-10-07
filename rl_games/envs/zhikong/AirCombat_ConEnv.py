@@ -127,18 +127,14 @@ class AirCombatConEnv(object):
         # (change-target): 0/1/12/012/0134. 99 default.
 
         self.act_feature_list = continuous_act_feature_list
-        self.action_space = Box(low=np.array([-1.0, -1.0, 0.3], dtype=np.float32),
+        self.action_space = Box(low=np.array([-1.0, -1.0, 0.5], dtype=np.float32),
                                 high=np.array([1.0, 1.0, 1.0], dtype=np.float32), 
                                 shape=(3,))
 
         # 42 obs
-        shape = 86
+        shape = 81
         if self.red_agents_num == 1:
-            shape = 86
-        elif self.red_agents_num == 2:
-            shape = 173
-        elif self.red_agents_num == 3:
-            shape = 255
+            shape = 81
         self.observation_spaces = [
             Box(low=np.float32(-np.inf), high=np.float32(np.inf),
                 shape=(shape, ), dtype=np.float32) for _ in range(self.n_agents)]
@@ -159,8 +155,6 @@ class AirCombatConEnv(object):
                 self.current_actions['blue'][agent_name][act_feature] = 0.
 
     def reset(self, init=False):
-        # print(f"reset start...")
-        # print(f"init: {init}")
         self.red_death = np.zeros((self.red_agents_num), dtype=int)
         self.red_death_missile = np.zeros((self.red_agents_num), dtype=int)
         self.blue_death = np.zeros((self.blue_agents_num), dtype=int)
@@ -225,7 +219,7 @@ class AirCombatConEnv(object):
         op_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
 
         ego_weapon_actions = self.weapon_actions(ego_weapon_actions, camp='red')
-        # op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
+        op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
 
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
@@ -257,36 +251,44 @@ class AirCombatConEnv(object):
             infos['win'] = False
             infos['lose'] = False
             infos['draw'] = False
-            if self.blue_all_dead_missile and not self.red_all_dead_missile:
+            if self.blue_all_dead and not self.red_all_dead:
                 if self.reward_sparse and not self.single_agent_mode:
                     reward = 1
                 else:
                     reward += self.reward_win
                 self.record = True
-            elif self.red_all_dead_missile and not self.blue_all_dead_missile:
+            elif self.red_all_dead and not self.blue_all_dead:
                 if self.reward_sparse and not self.single_agent_mode:
                     reward = -1
                 else:
                     reward += self.reward_defeat
                 self.record = True
-            if self.red_all_dead_missile and not self.blue_all_dead_missile:
+            if self.red_all_dead and not self.blue_all_dead:
                 infos['win'] = False
                 infos['lose'] = True
                 infos['draw'] = False
                 self.win_record.append(0)
                 self.record = True
-            elif not self.red_all_dead_missile and self.blue_all_dead_missile:
+            elif not self.red_all_dead and self.blue_all_dead:
                 infos['win'] = True
                 infos['lose'] = False
                 infos['draw'] = False
                 self.win_record.append(1)
                 self.record = True
+            elif self.red_all_dead and self.blue_all_dead:
+                infos['win'] = False
+                infos['lose'] = False
+                infos['draw'] = True
+                self.record = True
+        elif self._episode_steps >= self.episode_limit:
+                infos['win'] = False
+                infos['lose'] = False
+                infos['draw'] = True
         else:
             infos['win'] = False
             infos['lose'] = False
             infos['draw'] = False
         infos['win_rate'] =  np.mean(self.win_record) if self.win_record else 0
-        infos['action_relabel'] = ego_action
 
         if self.reward_scale:
             reward /= self.max_reward / self.reward_scale_rate
@@ -344,30 +346,28 @@ class AirCombatConEnv(object):
         """
         opponent info including health and vel infos.
         """
-        op_infos = np.zeros((self.blue_agents_num, 18), dtype=np.float32)
+        op_infos = np.zeros((self.blue_agents_num, 16), dtype=np.float32)
         agents = self.camp_2_agents[camp]
 
         for i, agent_name in enumerate(agents):
             if int(self.obs_dict[camp][agent_name]['DeathEvent']) != 99:
                 continue
             op_infos[i, 0] = self.obs_dict[camp][agent_name]['LifeCurrent']
-            op_infos[i, 1] = self.obs_dict[camp][agent_name]['velocities/u-fps']
-            op_infos[i, 2] = self.obs_dict[camp][agent_name]['velocities/v-fps']
-            op_infos[i, 3] = self.obs_dict[camp][agent_name]['velocities/w-fps']
-            op_infos[i, 4] = self.obs_dict[camp][agent_name]['velocities/v-north-fps']
-            op_infos[i, 5] = self.obs_dict[camp][agent_name]['velocities/v-east-fps']
-            op_infos[i, 6] = self.obs_dict[camp][agent_name]['velocities/v-down-fps']
-            op_infos[i, 7] = self.obs_dict[camp][agent_name]['velocities/p-rad_sec']
-            op_infos[i, 8] = self.obs_dict[camp][agent_name]['velocities/q-rad_sec']
-            op_infos[i, 9] = self.obs_dict[camp][agent_name]['velocities/r-rad_sec']
-            op_infos[i, 10] = self.obs_dict[camp][agent_name]['velocities/h-dot-fps']
-            op_infos[i, 11] = self.obs_dict[camp][agent_name]['velocities/ve-fps']
-            op_infos[i, 12] = self.obs_dict[camp][agent_name]['velocities/mach']
-            op_infos[i, 13] = self.obs_dict[camp][agent_name]['position/h-sl-ft']
-            op_infos[i, 14] = self.obs_dict[camp][agent_name]['attitude/pitch-rad']
-            op_infos[i, 15] = self.obs_dict[camp][agent_name]['attitude/roll-rad']
-            op_infos[i, 16] = self.obs_dict[camp][agent_name]['attitude/psi-deg']
-            op_infos[i, 17] = self.obs_dict[camp][agent_name]['aero/beta-deg']
+            op_infos[i, 1] = self.obs_dict[camp][agent_name]['position/long-gc-deg']
+            op_infos[i, 2] = self.obs_dict[camp][agent_name]['position/lat-geod-deg']
+            op_infos[i, 3] = self.obs_dict[camp][agent_name]['velocities/u-fps']
+            op_infos[i, 4] = self.obs_dict[camp][agent_name]['velocities/v-fps']
+            op_infos[i, 5] = self.obs_dict[camp][agent_name]['velocities/w-fps']
+            op_infos[i, 6] = self.obs_dict[camp][agent_name]['velocities/p-rad_sec']
+            op_infos[i, 7] = self.obs_dict[camp][agent_name]['velocities/q-rad_sec']
+            op_infos[i, 8] = self.obs_dict[camp][agent_name]['velocities/r-rad_sec']
+            op_infos[i, 9] = self.obs_dict[camp][agent_name]['velocities/h-dot-fps']
+            op_infos[i, 10] = self.obs_dict[camp][agent_name]['velocities/ve-fps']
+            op_infos[i, 11] = self.obs_dict[camp][agent_name]['velocities/mach']
+            op_infos[i, 12] = self.obs_dict[camp][agent_name]['position/h-sl-ft']
+            op_infos[i, 13] = self.obs_dict[camp][agent_name]['attitude/pitch-rad']
+            op_infos[i, 14] = self.obs_dict[camp][agent_name]['attitude/roll-rad']
+            op_infos[i, 15] = self.obs_dict[camp][agent_name]['attitude/psi-deg']
 
         obs_op = op_infos.flatten()
         return obs_op
@@ -376,57 +376,54 @@ class AirCombatConEnv(object):
 
         ego_agents = self.camp_2_agents[camp]
         ego_agent_num = self.camp_2_agents_num[camp]
-        ego_infos = np.zeros((ego_agent_num, 23+10+27), dtype=np.float32)
+        ego_infos = np.zeros((ego_agent_num, 20+10+27), dtype=np.float32)
 
         for i, name in enumerate(ego_agents):
             if int(self.obs_dict[camp][name]['DeathEvent']) != 99:
                 continue
             ego_infos[i, 0] = self.obs_dict[camp][name]['LifeCurrent']
-            ego_infos[i, 1] = self.obs_dict[camp][name]['position/h-sl-ft']
-            ego_infos[i, 2] = self.obs_dict[camp][name]['attitude/pitch-rad']
-            ego_infos[i, 3] = self.obs_dict[camp][name]['attitude/roll-rad']
-            ego_infos[i, 4] = self.obs_dict[camp][name]['attitude/psi-deg']
-            ego_infos[i, 5] = self.obs_dict[camp][name]['aero/beta-deg']
-            ego_infos[i, 6] = self.obs_dict[camp][name]['velocities/u-fps']
-            ego_infos[i, 7] = self.obs_dict[camp][name]['velocities/v-fps']
-            ego_infos[i, 8] = self.obs_dict[camp][name]['velocities/w-fps']
-            ego_infos[i, 9] = self.obs_dict[camp][name]['velocities/v-north-fps']
-            ego_infos[i, 10] = self.obs_dict[camp][name]['velocities/v-east-fps']
-            ego_infos[i, 11] = self.obs_dict[camp][name]['velocities/v-down-fps']
-            ego_infos[i, 12] = self.obs_dict[camp][name]['velocities/p-rad_sec']
-            ego_infos[i, 13] = self.obs_dict[camp][name]['velocities/q-rad_sec']
-            ego_infos[i, 14] = self.obs_dict[camp][name]['velocities/ve-fps']
-            ego_infos[i, 15] = self.obs_dict[camp][name]['velocities/u-fps']
-            ego_infos[i, 16] = self.obs_dict[camp][name]['velocities/h-dot-fps']
-            ego_infos[i, 17] = self.obs_dict[camp][name]['velocities/mach']
-            ego_infos[i, 18] = self.obs_dict[camp][name]['forces/load-factor']
-            ego_infos[i, 19] = self.obs_dict[camp][name]['IsOutOfValidBattleArea']
-            ego_infos[i, 20] = self.obs_dict[camp][name]['OutOfValidBattleAreaCurrentDuration']
-            ego_infos[i, 21] = self.obs_dict[camp][name]['SRAAMCurrentNum']
-            ego_infos[i, 22] = self.obs_dict[camp][name]['AMRAAMCurrentNum']
-            ego_infos[i, 23+int(self.obs_dict[camp][name]['AimMode'])] = 1
-            ego_infos[i, 25+int(self.obs_dict[camp][name]['SRAAM1_CanReload'])] = 1
-            ego_infos[i, 27+int(self.obs_dict[camp][name]['SRAAM2_CanReload'])] = 1
-            ego_infos[i, 29+int(self.obs_dict[camp][name]['AMRAAMCanReload'])] = 1
-            ego_infos[i, 31+int(self.obs_dict[camp][name]['IfPresenceHitting'])] = 1
+            ego_infos[i, 1] = self.obs_dict[camp][name]['position/long-gc-deg']
+            ego_infos[i, 2] = self.obs_dict[camp][name]['position/lat-geod-deg']
+            ego_infos[i, 3] = self.obs_dict[camp][name]['position/h-sl-ft']
+            ego_infos[i, 4] = self.obs_dict[camp][name]['attitude/pitch-rad']
+            ego_infos[i, 5] = self.obs_dict[camp][name]['attitude/roll-rad']
+            ego_infos[i, 6] = self.obs_dict[camp][name]['attitude/psi-deg']
+            ego_infos[i, 7] = self.obs_dict[camp][name]['velocities/u-fps']
+            ego_infos[i, 8] = self.obs_dict[camp][name]['velocities/v-fps']
+            ego_infos[i, 9] = self.obs_dict[camp][name]['velocities/w-fps']
+            ego_infos[i, 10] = self.obs_dict[camp][name]['velocities/p-rad_sec']
+            ego_infos[i, 11] = self.obs_dict[camp][name]['velocities/q-rad_sec']
+            ego_infos[i, 12] = self.obs_dict[camp][name]['velocities/ve-fps']
+            ego_infos[i, 13] = self.obs_dict[camp][name]['velocities/h-dot-fps']
+            ego_infos[i, 14] = self.obs_dict[camp][name]['velocities/mach']
+            ego_infos[i, 15] = self.obs_dict[camp][name]['forces/load-factor']
+            ego_infos[i, 16] = self.obs_dict[camp][name]['IsOutOfValidBattleArea']
+            ego_infos[i, 17] = self.obs_dict[camp][name]['OutOfValidBattleAreaCurrentDuration']
+            ego_infos[i, 18] = self.obs_dict[camp][name]['SRAAMCurrentNum']
+            ego_infos[i, 19] = self.obs_dict[camp][name]['AMRAAMCurrentNum']
+            ego_infos[i, 20+int(self.obs_dict[camp][name]['AimMode'])] = 1
+            ego_infos[i, 22+int(self.obs_dict[camp][name]['SRAAM1_CanReload'])] = 1
+            ego_infos[i, 24+int(self.obs_dict[camp][name]['SRAAM2_CanReload'])] = 1
+            ego_infos[i, 26+int(self.obs_dict[camp][name]['AMRAAMCanReload'])] = 1
+            ego_infos[i, 28+int(self.obs_dict[camp][name]['IfPresenceHitting'])] = 1
 
             if '99' not in str(self.obs_dict[camp][name]['TargetIntoView']):
-                indices = self._view_sin(self.obs_dict[camp][name]['TargetIntoView'], base=33)
+                indices = self._view_sin(self.obs_dict[camp][name]['TargetIntoView'], base=30)
                 ego_infos[i, indices] = 1
-
             if '99' not in str(self.obs_dict[camp][name]['AllyIntoView']):
-                indices = self._view_sin(self.obs_dict[camp][name]['AllyIntoView'], base=38)
+                indices = self._view_sin(self.obs_dict[camp][name]['AllyIntoView'], base=35)
                 ego_infos[i, indices] = 1
             if '99' not in str(self.obs_dict[camp][name]['TargetEnterAttackRange']):
-                indices = self._view_sin(self.obs_dict[camp][name]['TargetEnterAttackRange'], base=43)
+                indices = self._view_sin(self.obs_dict[camp][name]['TargetEnterAttackRange'], base=40)
                 ego_infos[i, indices] = 1
             if '99' not in str(self.obs_dict[camp][name]['SRAAMTargetLocked']):
-                indices = self._view_sin(self.obs_dict[camp][name]['SRAAMTargetLocked'], base=48)
+                indices = self._view_sin(self.obs_dict[camp][name]['SRAAMTargetLocked'], base=45)
                 ego_infos[i, indices] = 1
             if '99' not in str(self.obs_dict[camp][name]['AMRAAMlockedTarget']):
-                indices = self._view_sin(self.obs_dict[camp][name]['AMRAAMlockedTarget'], base=53)
+                indices = self._view_sin(self.obs_dict[camp][name]['AMRAAMlockedTarget'], base=50)
                 ego_infos[i, indices] = 1
-            ego_infos[i, 58+int(self.obs_dict[camp][name]['MissileAlert'])] = 1
+
+            ego_infos[i, 55 + int(self.obs_dict[camp][name]['MissileAlert'])] = 1
 
         return ego_infos.flatten()
 
@@ -578,65 +575,65 @@ class AirCombatConEnv(object):
         np.random.seed(seed=seed)
 
 
-    def reward_battle(self):
-        """Reward function when self.reward_spare==False.
-        Returns accumulative hit/shield point damage dealt to the enemy
-        + reward_death_value per enemy unit killed, and, in case
-        self.reward_only_positive == False, - (damage dealt to ally units
-        + reward_death_value per ally unit killed) * self.reward_negative_scale
-        """
+    # def reward_battle(self):
+    #     """Reward function when self.reward_spare==False.
+    #     Returns accumulative hit/shield point damage dealt to the enemy
+    #     + reward_death_value per enemy unit killed, and, in case
+    #     self.reward_only_positive == False, - (damage dealt to ally units
+    #     + reward_death_value per ally unit killed) * self.reward_negative_scale
+    #     """
 
-        if self.reward_sparse:
-            return 0
+    #     if self.reward_sparse:
+    #         return 0
 
-        neg_scale = self.reward_negative_scale
-        delta_ally = 0
-        delta_enemy = 0
-        delta_deaths = 0
-        locked = 0
-        area = 0
-        height = 0
+    #     neg_scale = self.reward_negative_scale
+    #     delta_ally = 0
+    #     delta_enemy = 0
+    #     delta_deaths = 0
+    #     locked = 0
+    #     area = 0
+    #     height = 0
 
-        locked_adv, be_locked_adv = self.locked_reward()
-        locked += np.sum(locked_adv) * 2
-        locked -= np.sum(be_locked_adv) * neg_scale
+    #     locked_adv, be_locked_adv = self.locked_reward()
+    #     locked += np.sum(locked_adv) * 2
+    #     locked -= np.sum(be_locked_adv) * neg_scale
 
-        height, area = self.area_reward()
-        height = np.sum(height)
-        area = np.sum(area)
+    #     height, area = self.area_reward()
+    #     height = np.sum(height)
+    #     area = np.sum(area)
 
-        for al_id, ego_agent_name in enumerate(self.red_agents):
-            if not self.red_death[al_id]:
-                prev_health = self.prev_obs_dict['red'][ego_agent_name]['LifeCurrent']
-                current_health = self.obs_dict['red'][ego_agent_name]['LifeCurrent']
-                if int(current_health) == 0 or int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
-                    self.red_death[al_id] = 1
-                    if not self.reward_only_positive:
-                        delta_deaths -= self.reward_death_value * neg_scale 
-                    delta_ally += neg_scale * prev_health
-                else:
-                    delta_ally += neg_scale * (prev_health - current_health)
+    #     for al_id, ego_agent_name in enumerate(self.red_agents):
+    #         if not self.red_death[al_id]:
+    #             prev_health = self.prev_obs_dict['red'][ego_agent_name]['LifeCurrent']
+    #             current_health = self.obs_dict['red'][ego_agent_name]['LifeCurrent']
+    #             if int(current_health) == 0 or int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
+    #                 self.red_death[al_id] = 1
+    #                 if not self.reward_only_positive:
+    #                     delta_deaths -= self.reward_death_value * neg_scale 
+    #                 delta_ally += neg_scale * prev_health
+    #             else:
+    #                 delta_ally += neg_scale * (prev_health - current_health)
 
-        for e_id, op_agent_name in enumerate(self.blue_agents):
-            if not self.blue_death[e_id]:
-                prev_health = self.prev_obs_dict['blue'][op_agent_name]['LifeCurrent']
-                current_health = self.obs_dict['blue'][op_agent_name]['LifeCurrent']
-                if int(current_health) == 0 or int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
-                    self.blue_death[e_id] = 1
-                    if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) == 0:
-                        delta_deaths += self.reward_death_value
-                    else:
-                        delta_deaths += 2 * self.reward_death_value
-                    delta_enemy += prev_health
-                else:
-                    delta_enemy += prev_health - current_health 
+    #     for e_id, op_agent_name in enumerate(self.blue_agents):
+    #         if not self.blue_death[e_id]:
+    #             prev_health = self.prev_obs_dict['blue'][op_agent_name]['LifeCurrent']
+    #             current_health = self.obs_dict['blue'][op_agent_name]['LifeCurrent']
+    #             if int(current_health) == 0 or int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
+    #                 self.blue_death[e_id] = 1
+    #                 if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) == 0:
+    #                     delta_deaths += self.reward_death_value
+    #                 else:
+    #                     delta_deaths += 2 * self.reward_death_value
+    #                 delta_enemy += prev_health
+    #             else:
+    #                 delta_enemy += prev_health - current_health 
 
-        if self.reward_only_positive:
-            reward = abs(delta_enemy + delta_deaths)
-        else:
-            reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
+    #     if self.reward_only_positive:
+    #         reward = abs(delta_enemy + delta_deaths)
+    #     else:
+    #         reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
 
-        return reward
+    #     return reward
 
     def reward_single_agent_mode(self):
         pass
@@ -717,3 +714,179 @@ class AirCombatConEnv(object):
             azimuth = 90 - azimuth
         
         return np.array(elevation, dtype=np.float32),  np.array(azimuth, dtype=np.float32)
+
+    def reward_battle(self):
+
+        """Reward function when self.reward_spare==False.
+        Returns accumulative hit/shield point damage dealt to the enemy
+        + reward_death_value per enemy unit killed, and, in case
+        self.reward_only_positive == False, - (damage dealt to ally units
+        + reward_death_value per ally unit killed) * self.reward_negative_scale
+        """
+
+        if self.reward_sparse:
+            return 0
+
+        neg_scale = self.reward_negative_scale
+        delta_ally = 0
+        delta_enemy = 0
+        delta_deaths = 0
+        weapon_launch = 0
+        locked = 0
+        area = 0
+        height = 0
+
+        # weapon_launch = np.sum(self.invalid_launch) * neg_scale
+        locked_adv, be_locked_adv = self.locked_reward()
+        locked += np.sum(locked_adv) * 2
+        locked -= np.sum(be_locked_adv) * neg_scale
+
+        height, area = self.area_reward()
+        height = np.sum(height)
+        area = np.sum(area)
+
+        for al_id, ego_agent_name in enumerate(self.red_agents):
+            if not self.red_death[al_id]:
+                prev_health = self.prev_obs_dict['red'][ego_agent_name]['LifeCurrent']
+                current_health = self.obs_dict['red'][ego_agent_name]['LifeCurrent']
+                if int(current_health) == 0 or int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
+                    self.red_death[al_id] = 1
+                    if not self.reward_only_positive:
+                        delta_deaths -= self.reward_death_value * neg_scale
+                    delta_ally += neg_scale * prev_health
+                else:
+                    delta_ally += neg_scale * (prev_health - current_health)
+
+        for e_id, op_agent_name in enumerate(self.blue_agents):
+            if not self.blue_death[e_id]:
+                prev_health = self.prev_obs_dict['blue'][op_agent_name]['LifeCurrent']
+                current_health = self.obs_dict['blue'][op_agent_name]['LifeCurrent']
+                if int(current_health) == 0 or int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
+                    self.blue_death[e_id] = 1
+                    if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) == 0:
+                        delta_deaths += self.reward_death_value
+                    else:
+                        delta_deaths += 2 * self.reward_death_value
+                    delta_enemy += prev_health
+                else:
+                    delta_enemy += prev_health - current_health
+
+        if self.reward_only_positive:
+            reward = abs(delta_enemy + delta_deaths)
+        else:
+            reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
+
+        for al_id, ego_agent_name in enumerate(self.red_agents):
+            for e_id, op_agent_name in enumerate(self.blue_agents):
+                if not self.red_death[al_id] and not self.blue_death[e_id]:
+                    th_ang, th_dis = self.one_threat_index(ego_agent_name, op_agent_name)
+                    reward += 2 * (1 - th_ang) + (1 - th_dis)
+        return reward
+
+    def one_threat_index(self, ego_agent_name, op_agent_name):
+        try:
+
+            ego_x, ego_y, ego_z = self.GPStoXY(self.obs_dict['red'][ego_agent_name]['position/lat-geod-deg'],
+                                               self.obs_dict['red'][ego_agent_name]['position/long-gc-deg'],
+                                               self.obs_dict['red'][ego_agent_name]['position/h-sl-ft'])
+
+            op_x, op_y, op_z = self.GPStoXY(self.obs_dict['blue'][op_agent_name]['position/lat-geod-deg'],
+                                            self.obs_dict['blue'][op_agent_name]['position/long-gc-deg'],
+                                            self.obs_dict['blue'][op_agent_name]['position/h-sl-ft'])
+
+            ego_x_ang, ego_y_ang, ego_z_ang = self.ELtoAng(self.obs_dict['red'][ego_agent_name]['attitude/pitch-rad'],
+                                                           self.obs_dict['red'][ego_agent_name]['attitude/roll-rad'],
+                                                           self.obs_dict['red'][ego_agent_name]['attitude/psi-deg'])
+
+            op_x_ang, op_y_ang, op_z_ang = self.ELtoAng(self.obs_dict['blue'][op_agent_name]['attitude/pitch-rad'],
+                                                        self.obs_dict['blue'][op_agent_name]['attitude/roll-rad'],
+                                                        self.obs_dict['blue'][op_agent_name]['attitude/psi-deg'])
+
+            # 距离威胁指数
+            dis_attack = 40000.
+            dis_render = 60000.
+            dis_air = np.linalg.norm([ego_x - op_x, ego_y - op_y, ego_z - op_z])
+            if dis_air > dis_render:
+                th_dis = 0.01
+            elif dis_air <= dis_render and dis_render >= dis_attack:
+                th_dis = 0.01 + (dis_air - dis_render) * (0.4 - 0.01) / (dis_attack - dis_render)
+            else:
+                th_dis = 0.04 * dis_attack / dis_air
+            # print('=====================', self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget'])
+            if '99' not in str(self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget']):
+                th_dis *= 0.4
+
+            # 角度威胁指数
+            ego_array = np.array([ego_x_ang, ego_y_ang, ego_z_ang])
+            pos_arrray = np.array([ego_x - op_x, ego_y - op_y, ego_z - op_z])
+            op_array = np.array([op_x_ang, op_y_ang, op_z_ang])
+
+            theta_ang = self.Angle(ego_array, pos_arrray)
+            phi_ang = self.Angle(op_array, pos_arrray)
+            w_angle = 80000. / (dis_air - 100000.)
+            th_ang = ((1 - w_angle) * theta_ang + w_angle * phi_ang) / 360.
+        except KeyError:
+            th_ang, th_dis = 0., 0.
+
+        return th_ang, th_dis
+
+    def Angle(self, x, y):
+        return np.arccos(x.dot(y) / (np.sqrt(x.dot(x)) * np.sqrt(y.dot(y)))) * 180. / np.pi
+
+    def GPStoXY(self, lat, lon, height):
+        # input GPS and height
+        # output XYZ in meters (m) X:North Y:East Z:UP
+
+        # CONSTANTS_RADIUS_OF_EARTH = 6356752.  # 极半径
+        # CONSTANTS_RADIUS_OF_EARTH = 6378137.  # 赤道半径
+        CONSTANTS_RADIUS_OF_EARTH = 6371000.  # 平均半径
+
+        ft_to_m = 0.3048
+
+        # 可以预先定义参考点，否则取第一个测试点为参考点
+        try:
+            if not self.ref_lat:
+                self.ref_lat = lat
+        except:
+            self.ref_lat = lat
+
+        try:
+            if not self.ref_lon:
+                self.ref_lon = lon
+        except:
+            self.ref_lon = lon
+
+        lat_rad = math.radians(lat)
+        lon_rad = math.radians(lon)
+        ref_lat_rad = math.radians(self.ref_lat)
+        ref_lon_rad = math.radians(self.ref_lon)
+
+        sin_lat = math.sin(lat_rad)
+        cos_lat = math.cos(lat_rad)
+        ref_sin_lat = math.sin(ref_lat_rad)
+        ref_cos_lat = math.cos(ref_lat_rad)
+
+        cos_d_lon = math.cos(lon_rad - ref_lon_rad)
+
+        arg = np.clip(ref_sin_lat * sin_lat + ref_cos_lat * cos_lat * cos_d_lon, -1.0, 1.0)
+        c = math.acos(arg)
+
+        k = 1.0
+        if abs(c) > 0:
+            k = (c / math.sin(c))
+
+        x = float(k * (ref_cos_lat * sin_lat - ref_sin_lat * cos_lat * cos_d_lon) * CONSTANTS_RADIUS_OF_EARTH)
+        y = float(k * cos_lat * math.sin(lon_rad - ref_lon_rad) * CONSTANTS_RADIUS_OF_EARTH)
+        z = float(0. - ft_to_m * height)
+
+        return x, y, z
+
+    def ELtoAng(self, yaw, pitch, roll):
+        # x = math.cos(yaw)*math.cos(pitch)
+        # y = math.sin(yaw)*math.cos(pitch)
+        # z = math.sin(pitch)
+        x = -math.cos(yaw)*math.sin(pitch)*math.sin(roll) - math.sin(yaw)*math.cos(roll)
+        y = -math.sin(yaw)*math.sin(pitch)*math.sin(roll) + math.cos(yaw)*math.cos(roll)
+        z = math.cos(pitch)*math.sin(roll)
+        x, y, z = x, z, y
+        return x, y, z

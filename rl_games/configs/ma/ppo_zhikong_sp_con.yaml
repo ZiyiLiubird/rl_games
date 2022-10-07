@@ -33,7 +33,7 @@ params:
     name: zhikong_con
     env_name: zhikong_con
     player_pool_type: ''
-    player_pool_length: 3
+    player_pool_length: 2
     op_load_path: False
     update_win_rate: 0.8
     games_to_check: 10
@@ -55,7 +55,7 @@ params:
     e_clip: 0.2
     clip_value: True
     clip_actions: True
-    num_actors: 3
+    num_actors: 2
     horizon_length: 500
     minibatch_size: 500
     mini_epochs: 2
@@ -75,8 +75,8 @@ params:
       ip: '127.0.1.1'
       worker_index: 888
       config_path: 'rl_games/configs/ma/ppo_zhikong_sp_con.yaml'
-      excute_path: '/home/lzy/lzy/human-ai/Air/9-21/Linux/Mono/NoLinux/ZK.x86_64' #'/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64'
-      playmode: 0
+      excute_path: '/home/lzy/lzy/human-ai/Air/9-21/Linux/Mono/Linux/ZK.x86_64' #'/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64'
+      playmode: 1
       num_agents: 2
       red_agents_num: 1
       blue_agents_num: 1
@@ -118,4 +118,4 @@ params:
     determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/9-24/last_zhikong_con_ep_2570_rew_12.714963.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/10-7/last_zhikong_con_ep_40_rew_9.0891695.pth'

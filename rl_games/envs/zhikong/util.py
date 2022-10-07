@@ -53,19 +53,35 @@ def init_info(agent_nums, reset=True):
     assert agent_nums in [1, 2, 3, 4, 5, 6], "agent_nums must between 1~6"
     render = 0
     if agent_nums == 1:
+        # dict_init = {'flag':{'init':{'render': render}},
+        #             'red':{
+        #                 'red_0':
+        #                         {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.1,
+        #                         "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
+        #                         "ic/roc-fpm": 0, "ic/psi-true-deg": 90
+        #                         }
+        #                 },
+        #             'blue':{
+        #                 'blue_0':
+        #                     {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.1,
+        #                     "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
+        #                     "ic/roc-fpm": 0, "ic/psi-true-deg": -90
+        #                     }
+        #                     }
+        #             }
         dict_init = {'flag':{'init':{'render': render}},
                     'red':{
                         'red_0':
-                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.1,
+                                {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.1,
                                 "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
                                 "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                                 }
                         },
                     'blue':{
                         'blue_0':
-                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": 0.12, "ic/lat-geod-deg": 0.1,
+                            {"ic/h-sl-ft": 28000, "ic/terrain-elevation-ft": 1e-08, "ic/long-gc-deg": -0.12, "ic/lat-geod-deg": 0.1,
                             "ic/u-fps": 590.73, "ic/v-fps": 0, "ic/w-fps": 0, "ic/p-rad_sec": 0, "ic/q-rad_sec": 0, "ic/r-rad_sec": 0,
-                            "ic/roc-fpm": 0, "ic/psi-true-deg": -90
+                            "ic/roc-fpm": 0, "ic/psi-true-deg": 90
                             }
                             }
                     }
