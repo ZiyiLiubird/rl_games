@@ -21,25 +21,28 @@ def save_buffer(path, obs_buffer, action_buffer, obs_next_ubffer):
     data['obs_next'] = obs_next_buffer
     torch.save(data, path + '.pth')
     print(f"save success !!!")
-    # np.savez(path, obs_buffer=obs_buffer,
-    #          action_buffer=action_buffer, obs_next_buffer=obs_next_buffer)
 
 
 
 
 if __name__ == "__main__":
 
-    config = {"ip": '127.0.1.1', "num_agents":2, "worker_index":888, "scenes":1,
-            'excute_path': '/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64',
-            "playmode": 1, "action_space_type": "MultiDiscrete", "red_agents_num":1,
-            "blue_agents_num":1, "episode_max_length": 500, "change_target": False}
+    # setting 0: 相对飞行
+    # setting 1: 同向追击
+
+    config = {"ip": '127.0.1.1', "num_agents":6, "worker_index":888, "scenes":1,
+             'excute_path': '/home/lzy/lzy/human-ai/Air/9-21/Linux/Mono/Linux/ZK.x86_64',
+             "playmode": 1, "action_space_type": "MultiDiscrete", "red_agents_num":3,
+             "blue_agents_num":3, "episode_max_length": 500, "change_target": False,
+             "setting": 0, "enemy_weapon": 1,}
 
     env = AirCollectEnv(**config)
     obs = env.reset(init=True)
 
     # 1v1
-    ego_actions = np.array([[4,4,4,4,0,0]], dtype=float)
-    op_actions = np.array([[4,4,4,4,0,0]], dtype=float)
+    ego_actions = np.array([[0,0,1,0,0]], dtype=float)
+    op_actions = np.array([[0,0,1,0,0]], dtype=float)
+
 
     transition = namedtuple('transition', ['obs', 'action', 'obs_next'])
     buffer = []
@@ -47,16 +50,16 @@ if __name__ == "__main__":
     action_buffer = []
     obs_next_buffer = []
 
-    game_nums = 1
+    game_nums = 20
     path = "/home/lzy/lzy/MARL/self-play/data/data"
     steps = 0
     episode = 0
     while True:
+        obs_buffer.append(obs)
+        
         actions = [ego_actions, op_actions]
         obs_next, actions_human, dones = env.step(actions)
 
-        buffer.append(transition(obs=obs, action=actions_human, obs_next=obs_next))
-        obs_buffer.append(obs)
         action_buffer.append(actions_human)
         obs_next_buffer.append(obs_next)
         obs = obs_next

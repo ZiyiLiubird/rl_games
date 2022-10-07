@@ -13,7 +13,6 @@ import time
 import random
 import numpy as np
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
-# from rl_games.envs.zhikong import comm_interface
 from zhikong import comm_interface
 from .util import init_info, obs_feature_list, act_feature_list
 
@@ -31,6 +30,8 @@ class AirCollectEnv(object):
         self.scenes = kwargs.get('scenes', 1)
         self.red_agents_num = kwargs.get('red_agents_num', 1)
         self.blue_agents_num = kwargs.get('blue_agents_num', 1)
+        self.setting = kwargs.get("setting", 0)
+        self.enemy_weapon = kwargs.get("enemy_weapon", 0)
         self.num_agents = self.red_agents_num
         self.apply_agent_ids = True
         self.concat_infos = True
@@ -79,11 +80,8 @@ class AirCollectEnv(object):
                     zip(self.blue_agents, list(range(self.blue_agents_num))))
 
         # setup dict_init
-        self.dict_init = init_info(self.n_agents // 2, reset=False)
-        self.dict_reset = init_info(self.n_agents//2)
-
-        # define action and observation spaces
-        assert (self.action_space_type == "MultiDiscrete"), "We only support MultiDiscrete action space now"
+        self.dict_init = init_info(self.n_agents // 2, reset=False, seed=self.setting)
+        self.dict_reset = init_info(self.n_agents//2, seed=self.setting)
 
         # (aileron)：9
         # (elevator): 9
@@ -92,16 +90,17 @@ class AirCollectEnv(object):
         # (weapon-launch): 2
         # (switch-missile)： 2
         # (change-target): 0/1/12/012/0134. 99 default.
-        if self.change_target:
-            self.act_feature_list = act_feature_list
-            self.act_feature_list.append("change-target")
-            self.action_space = Tuple((Discrete(9), Discrete(9),
-                                    Discrete(9), Discrete(5), Discrete(2), Discrete(2),Discrete(5)))
-        else:
-            self.act_feature_list = act_feature_list
-            self.action_space = Tuple((Discrete(9), Discrete(9),
-                                    Discrete(9), Discrete(5), Discrete(2), Discrete(2)))
 
+        # if self.change_target:
+        #     self.act_feature_list = act_feature_list
+        #     self.act_feature_list.append("change-target")
+        #     self.action_space = Tuple((Discrete(9), Discrete(9),
+        #                             Discrete(9), Discrete(5), Discrete(2), Discrete(2),Discrete(5)))
+        # else:
+        #     self.act_feature_list = act_feature_list
+        #     self.action_space = Tuple((Discrete(9), Discrete(9),
+        #                             Discrete(9), Discrete(5), Discrete(2), Discrete(2)))
+        self.act_feature_list = act_feature_list
         # 42 obs
         shape = 91
         if self.red_agents_num == 1:
@@ -137,22 +136,24 @@ class AirCollectEnv(object):
 
         self._episode_steps = 0
         if init:
-            obs_dict = self.env.reset(self.dict_init)
+            self.obs_dict = self.env.reset(self.dict_init)
         else:
-            obs_dict = self.env.reset(self.dict_reset)
+            self.obs_dict = self.env.reset(self.dict_reset)
         print(f"env reset success !")
 
-        return obs_dict
+        return self.obs_dict
 
     def step(self, actions):
         """A single environment step. Returns reward, terminated, info."""
 
+        self.prev_obs_dict = self.obs_dict
+
         ego_action, op_action = actions[0], actions[1]
-        ego_action = ego_action.reshape(self.red_agents_num, -1)
-        op_action = op_action.reshape(self.blue_agents_num, -1)
-        infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
-        rewards = 0
+        self.ego_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=np.float32)
+        self.op_weapon_actions = np.zeros((self.blue_agents_num, 2), dtype=np.float32)
+        self.weapon_actions(self.ego_weapon_actions, camp='red')
+        self.weapon_actions(self.op_weapon_actions, camp='blue')
         self.process_actions(ego_action, op_action)
 
         self.obs_dict = self.env.step(self.current_actions)
@@ -168,9 +169,37 @@ class AirCollectEnv(object):
         elif self._episode_steps >= self.episode_limit:
             for i in range(self.num_agents):
                 dones[i] = True
-            
 
-        return self.obs_dict, actions_human, dones
+        return self.obs_dict, actions_human, dones        
+
+    def weapon_actions(self, ego_actions, camp='red'):
+        """
+        switch missile and weapon launch
+        """
+        agents = self.camp_2_agents[camp]
+        # srmissile_nums = np.zeros((self.red_agents_num, 1), dtype=np.float32)
+        for al_id, agent_name in enumerate(agents):
+            if int(self.prev_obs_dict[camp][agent_name]['DeathEvent']) != 99:
+                continue
+            srmissile_nums = self.prev_obs_dict[camp][agent_name]['SRAAMCurrentNum']
+            armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
+            aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
+            if srmissile_nums == 0 and armissile_nums != 0 and aim_mode == 0:
+                ego_actions[al_id][0] = 1
+            elif (armissile_nums == 0 and srmissile_nums != 0) and aim_mode == 1:
+                ego_actions[al_id][0] = 1
+            elif (armissile_nums != 0 and srmissile_nums !=0) and aim_mode == 0:
+                ego_actions[al_id][0] = 1
+            else:
+                ego_actions[al_id][0] = 0
+            sr_locked = self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']
+            ar_locked = self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']
+            if '99' not in str(sr_locked) or '99' not in str(ar_locked):
+                ego_actions[al_id][1] = 1
+            else:
+                ego_actions[al_id][1] = 0
+
+        return ego_actions
 
     def process_actions(self, ego_action, op_action):
         """
@@ -178,29 +207,62 @@ class AirCollectEnv(object):
         op_action: (num_op_agent, action_num)
 
         """
+
+        self.current_actions['red']['red_0']["fcs/aileron-cmd-norm"] = float(ego_action[0][0])
+        self.current_actions['red']['red_0']["fcs/elevator-cmd-norm"] = float(ego_action[0][1])
+        self.current_actions['red']['red_0']["fcs/throttle-cmd-norm"] = float(ego_action[0][2])
+        self.current_actions['red']['red_0']["switch-missile"] =  float(ego_action[0][3])
+        self.current_actions['red']['red_0']["fcs/weapon-launch"] =  float(ego_action[0][4])
+        
+        if int(self.prev_obs_dict['red']['red_0']['DeathEvent']) == 99:
+            self.red_0_lat = self.prev_obs_dict['red']['red_0']['position/lat-geod-deg']
+            self.red_0_lon = self.prev_obs_dict['red']['red_0']['position/long-gc-deg']
+            self.red_0_vel = self.prev_obs_dict['red']['red_0']['velocities/ve-fps'] * 0.6
+            self.red_0_height = self.prev_obs_dict['red']['red_0']['position/h-sl-ft'] * np.random.uniform(0.8, 1.2)
+
+        if int(self.prev_obs_dict['blue']['blue_0']['DeathEvent']) == 99:
+            self.blue_0_lat = self.prev_obs_dict['blue']['blue_0']['position/lat-geod-deg']
+            self.blue_0_lon = self.prev_obs_dict['blue']['blue_0']['position/long-gc-deg']
+            self.blue_0_vel = self.prev_obs_dict['blue']['blue_0']['velocities/ve-fps']
+            self.blue_0_height = self.prev_obs_dict['blue']['blue_0']['position/h-sl-ft']
+        
         for i in range(int(self.red_agents_num)):
-            for j, feature in enumerate(self.act_feature_list):
-                if feature in self.action_map:
-                    self.current_actions['red']['red_'+str(i)][feature] = self.action_map[feature][int(ego_action[i][j])]
-                else:
-                    self.current_actions['red']['red_'+str(i)][feature] =float(ego_action[i][j])
+            if i == 0:
+                continue
+            if int(self.prev_obs_dict['red']['red_'+str(i)]['DeathEvent']) != 99:
+                continue
+
+            if self._episode_steps == 0:
+                self.current_actions['red']['red_'+str(i)]["mode"] = 1
+            self.current_actions['red']['red_'+str(i)]["target_longdeg"] = self.blue_0_lon
+            self.current_actions['red']['red_'+str(i)]["target_latdeg"] = self.blue_0_lat
+            self.current_actions['red']['red_'+str(i)]["target_velocity"] = self.blue_0_vel
+            self.current_actions['red']['red_'+str(i)]["target_altitude_ft"] = self.blue_0_height
+            if self.enemy_weapon and self._episode_steps > 7:
+                self.current_actions['red']['red_'+str(i)]["switch-missile"]=  float(self.ego_weapon_actions[i][0])
+                self.current_actions['red']['red_'+str(i)]["fcs/weapon-launch"] =  float(self.ego_weapon_actions[i][1])
+
         for i in range(int(self.blue_agents_num)):
-            for j, feature in enumerate(self.act_feature_list):
-                if feature in self.action_map:
-                    self.current_actions['blue']['blue_'+str(i)][feature] = self.action_map[feature][int(op_action[i][j])]
-                else:
-                    self.current_actions['blue']['blue_'+str(i)][feature] = float(op_action[i][j])
+            if int(self.prev_obs_dict['blue']['blue_'+str(i)]['DeathEvent']) != 99:
+                continue
+            if self._episode_steps == 0:
+                self.current_actions['blue']['blue_'+str(i)]["mode"] = 1
+            self.current_actions['blue']['blue_'+str(i)]["target_longdeg"] = self.red_0_lon
+            self.current_actions['blue']['blue_'+str(i)]["target_latdeg"] = self.red_0_lat
+            self.current_actions['blue']['blue_'+str(i)]["target_velocity"] = self.red_0_vel
+            self.current_actions['blue']['blue_'+str(i)]["target_altitude_ft"] = self.red_0_height
+            if self.enemy_weapon and self._episode_steps > 7:
+                self.current_actions['blue']['blue_'+str(i)]["switch-missile"] = float(self.op_weapon_actions[i][0])
+                self.current_actions['blue']['blue_'+str(i)]["fcs/weapon-launch"] = float(self.op_weapon_actions[i][1])
 
     def save_obs_and_actions(self):
-        actions = np.zeros((self.red_agents_num, 6), dtype=np.float32)
+        actions = np.zeros((1, 5), dtype=np.float32)
 
-        for id, agent_name in enumerate(self.red_agents):
-            actions[id, 0] = self.obs_dict['red'][agent_name]['fcs/aileron-cmd-norm']
-            actions[id, 1] = self.obs_dict['red'][agent_name]['fcs/elevator-cmd-norm']
-            actions[id, 2] = self.obs_dict['red'][agent_name]['fcs/rudder-cmd-norm']
-            actions[id, 3] = self.obs_dict['red'][agent_name]['fcs/throttle-cmd-norm']
-
-        return actions
+        actions[0, 0] = self.obs_dict['red']['red_0']['fcs/aileron-cmd-norm']
+        actions[0, 1] = self.obs_dict['red']['red_0']['fcs/elevator-cmd-norm']
+        actions[0, 2] = self.obs_dict['red']['red_0']['fcs/throttle-cmd-norm']
+        actions[0, 3] = self.obs_dict['red']['red_0']['switch-missile']
+        actions[0, 4] = self.obs_dict['red']['red_0']['missile-launch']
 
     def judge_done(self):
 
@@ -233,4 +295,4 @@ class AirCollectEnv(object):
         if np.sum(self.blue_death_missile) == self.blue_agents_num:
             self.blue_all_dead_missile = True
 
-        return (self.red_all_dead and self.blue_all_dead)
+        return (self.red_all_dead and self.blue_all_dead) or self.red_death[0]

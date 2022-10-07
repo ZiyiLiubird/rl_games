@@ -14,7 +14,6 @@ import random
 import numpy as np
 from gym.spaces import Discrete, Box, Tuple
 from rl_games.envs.zhikong import comm_interface
-# from zhikong import comm_interface
 from .util import init_info, obs_feature_list, continuous_act_feature_list
 
 
@@ -57,6 +56,7 @@ class AirCombatConEnv(object):
         self.scenes = kwargs.get('scenes', 1)
         self.red_agents_num = kwargs.get('red_agents_num', 1)
         self.blue_agents_num = kwargs.get('blue_agents_num', 1)
+        self.setting = kwargs.get("setting", 0)
         self.num_agents = self.red_agents_num
         self.apply_agent_ids = True
         self.concat_infos = True
@@ -114,8 +114,8 @@ class AirCombatConEnv(object):
                     zip(self.blue_agents, list(range(self.blue_agents_num))))
 
         # setup dict_init
-        self.dict_init = init_info(self.n_agents // 2, reset=False)
-        self.dict_reset = init_info(self.n_agents//2)
+        self.dict_init = init_info(self.n_agents // 2, reset=False, seed=self.setting)
+        self.dict_reset = init_info(self.n_agents//2, seed=self.setting)
 
         # define action and observation spaces
         # (aileron)：9
