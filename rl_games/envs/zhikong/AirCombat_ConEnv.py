@@ -574,67 +574,6 @@ class AirCombatConEnv(object):
         random.seed(seed)
         np.random.seed(seed=seed)
 
-
-    # def reward_battle(self):
-    #     """Reward function when self.reward_spare==False.
-    #     Returns accumulative hit/shield point damage dealt to the enemy
-    #     + reward_death_value per enemy unit killed, and, in case
-    #     self.reward_only_positive == False, - (damage dealt to ally units
-    #     + reward_death_value per ally unit killed) * self.reward_negative_scale
-    #     """
-
-    #     if self.reward_sparse:
-    #         return 0
-
-    #     neg_scale = self.reward_negative_scale
-    #     delta_ally = 0
-    #     delta_enemy = 0
-    #     delta_deaths = 0
-    #     locked = 0
-    #     area = 0
-    #     height = 0
-
-    #     locked_adv, be_locked_adv = self.locked_reward()
-    #     locked += np.sum(locked_adv) * 2
-    #     locked -= np.sum(be_locked_adv) * neg_scale
-
-    #     height, area = self.area_reward()
-    #     height = np.sum(height)
-    #     area = np.sum(area)
-
-    #     for al_id, ego_agent_name in enumerate(self.red_agents):
-    #         if not self.red_death[al_id]:
-    #             prev_health = self.prev_obs_dict['red'][ego_agent_name]['LifeCurrent']
-    #             current_health = self.obs_dict['red'][ego_agent_name]['LifeCurrent']
-    #             if int(current_health) == 0 or int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
-    #                 self.red_death[al_id] = 1
-    #                 if not self.reward_only_positive:
-    #                     delta_deaths -= self.reward_death_value * neg_scale 
-    #                 delta_ally += neg_scale * prev_health
-    #             else:
-    #                 delta_ally += neg_scale * (prev_health - current_health)
-
-    #     for e_id, op_agent_name in enumerate(self.blue_agents):
-    #         if not self.blue_death[e_id]:
-    #             prev_health = self.prev_obs_dict['blue'][op_agent_name]['LifeCurrent']
-    #             current_health = self.obs_dict['blue'][op_agent_name]['LifeCurrent']
-    #             if int(current_health) == 0 or int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
-    #                 self.blue_death[e_id] = 1
-    #                 if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) == 0:
-    #                     delta_deaths += self.reward_death_value
-    #                 else:
-    #                     delta_deaths += 2 * self.reward_death_value
-    #                 delta_enemy += prev_health
-    #             else:
-    #                 delta_enemy += prev_health - current_health 
-
-    #     if self.reward_only_positive:
-    #         reward = abs(delta_enemy + delta_deaths)
-    #     else:
-    #         reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
-
-    #     return reward
-
     def reward_single_agent_mode(self):
         pass
 
@@ -716,7 +655,6 @@ class AirCombatConEnv(object):
         return np.array(elevation, dtype=np.float32),  np.array(azimuth, dtype=np.float32)
 
     def reward_battle(self):
-
         """Reward function when self.reward_spare==False.
         Returns accumulative hit/shield point damage dealt to the enemy
         + reward_death_value per enemy unit killed, and, in case
@@ -774,68 +712,69 @@ class AirCombatConEnv(object):
         if self.reward_only_positive:
             reward = abs(delta_enemy + delta_deaths)
         else:
-            reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
+            reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale - weapon_launch
 
         for al_id, ego_agent_name in enumerate(self.red_agents):
             for e_id, op_agent_name in enumerate(self.blue_agents):
                 if not self.red_death[al_id] and not self.blue_death[e_id]:
                     th_ang, th_dis = self.one_threat_index(ego_agent_name, op_agent_name)
-                    reward += 2 * (1 - th_ang) + (1 - th_dis)
+                    reward += 3 * (0. - th_ang) + 2 * (0. - th_dis)
         return reward
 
     def one_threat_index(self, ego_agent_name, op_agent_name):
         try:
 
-            ego_x, ego_y, ego_z = self.GPStoXY(self.obs_dict['red'][ego_agent_name]['position/lat-geod-deg'],
+            ego_x, ego_y, ego_z = self.GPS_to_xyz(self.obs_dict['red'][ego_agent_name]['position/lat-geod-deg'],
                                                self.obs_dict['red'][ego_agent_name]['position/long-gc-deg'],
                                                self.obs_dict['red'][ego_agent_name]['position/h-sl-ft'])
 
-            op_x, op_y, op_z = self.GPStoXY(self.obs_dict['blue'][op_agent_name]['position/lat-geod-deg'],
+            op_x, op_y, op_z = self.GPS_to_xyz(self.obs_dict['blue'][op_agent_name]['position/lat-geod-deg'],
                                             self.obs_dict['blue'][op_agent_name]['position/long-gc-deg'],
                                             self.obs_dict['blue'][op_agent_name]['position/h-sl-ft'])
 
-            ego_x_ang, ego_y_ang, ego_z_ang = self.ELtoAng(self.obs_dict['red'][ego_agent_name]['attitude/pitch-rad'],
-                                                           self.obs_dict['red'][ego_agent_name]['attitude/roll-rad'],
-                                                           self.obs_dict['red'][ego_agent_name]['attitude/psi-deg'])
+            ego_x_ang, ego_y_ang, ego_z_ang = self.Euler_to_xyz(self.obs_dict['red'][ego_agent_name]['attitude/psi-deg'],
+                                                           self.obs_dict['red'][ego_agent_name]['attitude/pitch-rad'],
+                                                           self.obs_dict['red'][ego_agent_name]['attitude/roll-rad'])
 
-            op_x_ang, op_y_ang, op_z_ang = self.ELtoAng(self.obs_dict['blue'][op_agent_name]['attitude/pitch-rad'],
-                                                        self.obs_dict['blue'][op_agent_name]['attitude/roll-rad'],
-                                                        self.obs_dict['blue'][op_agent_name]['attitude/psi-deg'])
+            op_x_ang, op_y_ang, op_z_ang = self.Euler_to_xyz(self.obs_dict['blue'][op_agent_name]['attitude/psi-deg'],
+                                                        self.obs_dict['blue'][op_agent_name]['attitude/pitch-rad'],
+                                                        self.obs_dict['blue'][op_agent_name]['attitude/roll-rad'])
 
             # 距离威胁指数
             dis_attack = 40000.
             dis_render = 60000.
+            dis_blind = 5000.
             dis_air = np.linalg.norm([ego_x - op_x, ego_y - op_y, ego_z - op_z])
             if dis_air > dis_render:
                 th_dis = 0.01
             elif dis_air <= dis_render and dis_render >= dis_attack:
                 th_dis = 0.01 + (dis_air - dis_render) * (0.4 - 0.01) / (dis_attack - dis_render)
+            elif dis_air <= dis_attack and dis_render >= dis_blind:
+                th_dis = 0.4 * dis_attack / dis_air
             else:
-                th_dis = 0.04 * dis_attack / dis_air
-            # print('=====================', self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget'])
+                th_dis = 0.1
             if '99' not in str(self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget']):
                 th_dis *= 0.4
 
             # 角度威胁指数
             ego_array = np.array([ego_x_ang, ego_y_ang, ego_z_ang])
-            pos_arrray = np.array([ego_x - op_x, ego_y - op_y, ego_z - op_z])
+            pos_arrray = np.array([op_x - ego_x, op_y - ego_y, op_z - ego_z])
             op_array = np.array([op_x_ang, op_y_ang, op_z_ang])
 
-            theta_ang = self.Angle(ego_array, pos_arrray)
-            phi_ang = self.Angle(op_array, pos_arrray)
-            w_angle = 80000. / (dis_air - 100000.)
+            theta_ang = self.array_angle(ego_array, pos_arrray)
+            phi_ang = self.array_angle(op_array, pos_arrray)
+            w_angle = 80000. / (dis_air - 100000.)  # 威胁角权重，当距离远时仅关注进攻角
             th_ang = ((1 - w_angle) * theta_ang + w_angle * phi_ang) / 360.
         except KeyError:
             th_ang, th_dis = 0., 0.
-
         return th_ang, th_dis
 
-    def Angle(self, x, y):
+    def array_angle(self, x, y):  # 计算两向量夹角
         return np.arccos(x.dot(y) / (np.sqrt(x.dot(x)) * np.sqrt(y.dot(y)))) * 180. / np.pi
 
-    def GPStoXY(self, lat, lon, height):
-        # input GPS and height
-        # output XYZ in meters (m) X:North Y:East Z:UP
+    def GPS_to_xyz(self, lat, lon, height):
+        # 输入经纬度、海拔（ft）
+        # 输入参考系下坐标值XYZ (m) X:North Y:East Z:UP
 
         # CONSTANTS_RADIUS_OF_EARTH = 6356752.  # 极半径
         # CONSTANTS_RADIUS_OF_EARTH = 6378137.  # 赤道半径
@@ -847,13 +786,13 @@ class AirCombatConEnv(object):
         try:
             if not self.ref_lat:
                 self.ref_lat = lat
-        except:
+        except AttributeError:
             self.ref_lat = lat
 
         try:
             if not self.ref_lon:
                 self.ref_lon = lon
-        except:
+        except AttributeError:
             self.ref_lon = lon
 
         lat_rad = math.radians(lat)
@@ -881,12 +820,10 @@ class AirCombatConEnv(object):
 
         return x, y, z
 
-    def ELtoAng(self, yaw, pitch, roll):
-        # x = math.cos(yaw)*math.cos(pitch)
-        # y = math.sin(yaw)*math.cos(pitch)
-        # z = math.sin(pitch)
-        x = -math.cos(yaw)*math.sin(pitch)*math.sin(roll) - math.sin(yaw)*math.cos(roll)
-        y = -math.sin(yaw)*math.sin(pitch)*math.sin(roll) + math.cos(yaw)*math.cos(roll)
-        z = math.cos(pitch)*math.sin(roll)
-        x, y, z = x, z, y
+    def Euler_to_xyz(self, yaw, pitch, roll):
+        # 注意输入顺序和单位  :  yaw-航向角-角度    pitch-俯仰角-弧度    roll-翻滚角-弧度
+        # 飞机朝向仅与偏航角、俯仰角有关 与翻滚角无关
+        x = np.cos(yaw * np.pi / 180.)
+        y = np.sin(yaw * np.pi / 180.)
+        z = -np.sin(pitch) + 0. * roll
         return x, y, z

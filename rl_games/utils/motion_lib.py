@@ -5,7 +5,7 @@ import numpy as np
 
 class MotionLib():
     def __init__(self, motion_file, imitate_type="s_s"):
-        assert imitate_type in ["s_a", "s_s", "s_a"]
+        assert imitate_type in ["s_a", "s_s"]
         self._load_motions(motion_file)
         self.motion_ids = torch.arange(len(self.obses_list), dtype=torch.long)
         self.process_motions()
@@ -65,6 +65,9 @@ class MotionLib():
 
     def get_total_length(self):
         return len(self.obses_list)
+    
+    def sample(self, num_samples):
+        pass
         
     
             

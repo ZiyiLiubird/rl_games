@@ -77,14 +77,15 @@ params:
       config_path: 'rl_games/configs/ma/ppo_zhikong_sp_con.yaml'
       excute_path: '/home/lzy/lzy/human-ai/Air/9-21/Linux/Mono/Linux/ZK.x86_64' #'/home/lzy/lzy/human-ai/Air/9-17/Linux/IL2CPP/Linux/ZK.x86_64'
       playmode: 1
+      setting: 1
       num_agents: 2
       red_agents_num: 1
       blue_agents_num: 1
-      action_space_type: MultiDiscrete
+      action_space_type: Continuous
       ctrl_mode: 0
       apply_agent_ids: True
       central_value: False
-      episode_max_length: 500
+      episode_max_length: 800
       change_target: False
       render: False
       record_game_state: False
@@ -94,7 +95,7 @@ params:
       role_reward_param_file: null
       save_frequency: 500
       single_agent_mode: False
-      min_height: 17000
+      min_height: 10000
       reward_win: 200
       reward_sparse: False
       reward_only_positive: False
@@ -118,4 +119,4 @@ params:
     determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/10-7/last_zhikong_con_ep_40_rew_9.0891695.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/10-9/last_zhikong_con_ep_4580_rew_34.548756.pth'

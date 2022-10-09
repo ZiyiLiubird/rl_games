@@ -33,8 +33,6 @@ from rl_games.common import a2c_common
 from rl_games.common import schedulers
 from rl_games.common import vecenv
  
-# from isaacgym.torch_utils import *
-
 import time
 from datetime import datetime
 import numpy as np
@@ -47,10 +45,11 @@ import rl_games.learning.common_agent as common_agent
 
 from tensorboardX import SummaryWriter
 
+
 class AMPAgent(common_agent.CommonAgent):
     def __init__(self, base_name, params):
         super().__init__(base_name, params)
-
+        self.amp_debug = params['config']['amp_debug']
         if self._normalize_amp_input:
             self._amp_input_mean_std = RunningMeanStd(self._amp_observation_space.shape).to(self.ppo_device)
 
@@ -99,11 +98,7 @@ class AMPAgent(common_agent.CommonAgent):
             self.obs = self.env_reset(done_indices)
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
 
-            if self.use_action_masks:
-                masks = self.vec_env.get_action_masks()
-                res_dict = self.get_masked_action_values(self.obs, masks)
-            else:
-                res_dict = self.get_action_values(self.obs, self._rand_action_probs)
+            res_dict = self.get_action_values(self.obs, self._rand_action_probs)
 
             for k in update_list:
                 self.experience_buffer.update_data(k, n, res_dict[k]) 
@@ -129,7 +124,7 @@ class AMPAgent(common_agent.CommonAgent):
             self.current_lengths += 1
             all_done_indices = self.dones.nonzero(as_tuple=False)
             done_indices = all_done_indices[::self.num_agents]
-  
+
             self.game_rewards.update(self.current_rewards[done_indices])
             self.game_lengths.update(self.current_lengths[done_indices])
             self.algo_observer.process_infos(infos, done_indices)
@@ -139,7 +134,7 @@ class AMPAgent(common_agent.CommonAgent):
             self.current_rewards = self.current_rewards * not_dones.unsqueeze(1)
             self.current_lengths = self.current_lengths * not_dones
             
-            if (self.vec_env.env.task.viewer):
+            if self.amp_debug:
                 self._amp_debug(infos)
 
             done_indices = done_indices[:, 0]
@@ -189,7 +184,7 @@ class AMPAgent(common_agent.CommonAgent):
 
         if self.normalize_value:
             res_dict['values'] = self.value_mean_std(res_dict['values'], True)
-        
+
         rand_action_mask = torch.bernoulli(rand_action_probs)
         det_action_mask = rand_action_mask == 0.0
         res_dict['actions'][det_action_mask] = res_dict['mus'][det_action_mask]
@@ -208,8 +203,10 @@ class AMPAgent(common_agent.CommonAgent):
         return
 
     def train_epoch(self):
+        
+        self.set_eval()
         play_time_start = time.time()
-
+        
         with torch.no_grad():
             if self.is_rnn:
                 batch_dict = self.play_steps_rnn()
@@ -219,7 +216,7 @@ class AMPAgent(common_agent.CommonAgent):
         play_time_end = time.time()
         update_time_start = time.time()
         rnn_masks = batch_dict.get('rnn_masks', None)
-        
+
         self._update_amp_demos()
         num_obs_samples = batch_dict['amp_obs'].shape[0]
         amp_obs_demo = self._amp_obs_demo_buffer.sample(num_obs_samples)['amp_obs']
@@ -313,7 +310,7 @@ class AMPAgent(common_agent.CommonAgent):
         amp_obs_demo = input_dict['amp_obs_demo'][0:self._amp_minibatch_size]
         amp_obs_demo = self._preproc_amp_obs(amp_obs_demo)
         amp_obs_demo.requires_grad_(True)
-        
+
         rand_action_mask = input_dict['rand_action_mask']
         rand_action_sum = torch.sum(rand_action_mask)
 
@@ -404,7 +401,7 @@ class AMPAgent(common_agent.CommonAgent):
             kl_dist = torch_ext.policy_kl(mu.detach(), sigma.detach(), old_mu_batch, old_sigma_batch, reduce_kl)
             if self.is_rnn:
                 kl_dist = (kl_dist * rnn_masks).sum() / rnn_masks.numel()  #/ sum_mask
-                    
+ 
         self.train_result = {
             'entropy': entropy,
             'kl': kl_dist,
@@ -451,8 +448,8 @@ class AMPAgent(common_agent.CommonAgent):
         return config
 
     def _build_rand_action_probs(self):
-        num_envs = self.vec_env.env.task.num_envs
-        env_ids = to_torch(np.arange(num_envs), dtype=torch.float32, device=self.ppo_device)
+        num_envs = self.num_actors
+        env_ids = np.arange(num_envs, dtype=np.float32)
 
         self._rand_action_probs = 1.0 - torch.exp(10 * (env_ids / (num_envs - 1.0) - 1.0))
         self._rand_action_probs[0] = 1.0
@@ -533,16 +530,16 @@ class AMPAgent(common_agent.CommonAgent):
         self.experience_buffer.tensor_dict['amp_obs'] = torch.zeros(batch_shape + self._amp_observation_space.shape,
                                                                     device=self.ppo_device)
         self.experience_buffer.tensor_dict['rand_action_mask'] = torch.zeros(batch_shape, dtype=torch.float32, device=self.ppo_device)
-        
+
         amp_obs_demo_buffer_size = int(self.config['amp_obs_demo_buffer_size'])
         self._amp_obs_demo_buffer = replay_buffer.ReplayBuffer(amp_obs_demo_buffer_size, self.ppo_device)
 
         self._amp_replay_keep_prob = self.config['amp_replay_keep_prob']
         replay_buffer_size = int(self.config['amp_replay_buffer_size'])
         self._amp_replay_buffer = replay_buffer.ReplayBuffer(replay_buffer_size, self.ppo_device)
-        
+
         self._build_rand_action_probs()
-        
+
         self.tensor_list += ['amp_obs', 'rand_action_mask']
         return
 

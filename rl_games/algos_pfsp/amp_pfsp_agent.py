@@ -70,8 +70,10 @@ class PFSPAgent(amp_agent.AMPAgent):
             return PFSPPlayerPool(max_length=self.max_his_player_num, device=self.device)
 
     def play_steps(self):
+        self.set_eval()
         update_list = self.update_list
         step_time = 0.0
+
         for n in range(self.horizon_length):
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
@@ -134,7 +136,6 @@ class PFSPAgent(amp_agent.AMPAgent):
 
             self.current_rewards = self.current_rewards * not_dones.unsqueeze(1)
             self.current_lengths = self.current_lengths * not_dones
-            # print(f"infos: {infos}")
             
             self.player_pool.update_player_metric(infos=infos)
             self.resample_op(env_done_indices.flatten())
@@ -259,13 +260,10 @@ class PFSPAgent(amp_agent.AMPAgent):
         obs = self.vec_env.reset(init=True)
         
         obs = self.obs_to_tensors(obs)
-        # obs['obs_op'] = obs['obs'][self.num_actors*self.num_agents:]
-        # obs['obs'] = obs['obs'][:self.num_actors*self.num_agents]
         return obs
 
     def train(self):
         self.init_tensors()
-        self.last_win_rate = 0
         self.mean_rewards = self.last_mean_rewards = -100500
         start_time = time.time()
         total_time = 0
@@ -281,9 +279,21 @@ class PFSPAgent(amp_agent.AMPAgent):
             dist.broadcast_object_list(model_params, 0)
             self.model.load_state_dict(model_params[0])
 
+        self._init_train()
+
         while True:
             epoch_num = self.update_epoch()
-            step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul = self.train_epoch()
+            train_info = self.train_epoch()
+            
+            sum_time = train_info['total_time']
+            play_time = train_info['play_time']
+            update_time = train_info['update_time']
+            a_losses = train_info['actor_loss']
+            c_losses = train_info['critic_loss']
+            entropies = train_info['entropy']
+            kls = train_info['kl']
+            last_lr = train_info['last_lr'][-1]
+            lr_mul = train_info['lr_mul'][-1]
 
             # cleaning memory to optimize space
             self.dataset.update_values_dict(None)
