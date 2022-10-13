@@ -90,6 +90,7 @@ class AirCombatConEnv(object):
         self.reward_only_positive = kwargs.get("reward_only_positive", False)
         self.max_reward = (self.reward_win + 2 * self.reward_death_value * self.blue_agents_num
                            + 200*self.blue_agents_num)
+
         # death tracking
         self.red_death = np.zeros((self.red_agents_num), dtype=int)
         self.red_death_missile = np.zeros((self.red_agents_num), dtype=int)
@@ -132,9 +133,9 @@ class AirCombatConEnv(object):
                                 shape=(3,))
 
         # 42 obs
-        shape = 81
+        shape = 83
         if self.red_agents_num == 1:
-            shape = 81
+            shape = 83
         self.observation_spaces = [
             Box(low=np.float32(-np.inf), high=np.float32(np.inf),
                 shape=(shape, ), dtype=np.float32) for _ in range(self.n_agents)]
@@ -189,7 +190,7 @@ class AirCombatConEnv(object):
             srmissile_nums = self.prev_obs_dict[camp][agent_name]['SRAAMCurrentNum']
             armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
             aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
-            if srmissile_nums == 0 and armissile_nums != 0 and aim_mode == 0:
+            if (srmissile_nums == 0 and armissile_nums != 0) and aim_mode == 0:
                 ego_actions[al_id][0] = 1
             elif (armissile_nums == 0 and srmissile_nums != 0) and aim_mode == 1:
                 ego_actions[al_id][0] = 1
@@ -246,49 +247,38 @@ class AirCombatConEnv(object):
 
         obs_dict = {}
         obs_dict['obs'], obs_dict['obs_op'] = obs, obs_op
+        infos['win'] = False
+        infos['lose'] = False
+        infos['draw'] = False
 
         if not self.record:
-            infos['win'] = False
-            infos['lose'] = False
-            infos['draw'] = False
             if self.blue_all_dead and not self.red_all_dead:
                 if self.reward_sparse and not self.single_agent_mode:
                     reward = 1
                 else:
                     reward += self.reward_win
                 self.record = True
-            elif self.red_all_dead and not self.blue_all_dead:
+                infos['win'] = True
+                infos['lose'] = False
+                infos['draw'] = False
+            elif self.red_all_dead:
                 if self.reward_sparse and not self.single_agent_mode:
                     reward = -1
                 else:
                     reward += self.reward_defeat
                 self.record = True
-            if self.red_all_dead and not self.blue_all_dead:
                 infos['win'] = False
                 infos['lose'] = True
                 infos['draw'] = False
-                self.win_record.append(0)
-                self.record = True
-            elif not self.red_all_dead and self.blue_all_dead:
-                infos['win'] = True
-                infos['lose'] = False
-                infos['draw'] = False
-                self.win_record.append(1)
-                self.record = True
-            elif self.red_all_dead and self.blue_all_dead:
+        elif self._episode_steps >= self.episode_limit and not self.record:
                 infos['win'] = False
                 infos['lose'] = False
                 infos['draw'] = True
                 self.record = True
-        elif self._episode_steps >= self.episode_limit:
-                infos['win'] = False
-                infos['lose'] = False
-                infos['draw'] = True
         else:
             infos['win'] = False
             infos['lose'] = False
             infos['draw'] = False
-        infos['win_rate'] =  np.mean(self.win_record) if self.win_record else 0
 
         if self.reward_scale:
             reward /= self.max_reward / self.reward_scale_rate
@@ -428,11 +418,14 @@ class AirCombatConEnv(object):
         return ego_infos.flatten()
 
     def get_obs_agent(self, agent_name, camp='red'):
-        ctrl_state_feats = np.zeros((4), dtype=np.float32)
+        ctrl_state_feats = np.zeros((6), dtype=np.float32)
         ctrl_state_feats[0] = self.obs_dict[camp][agent_name]['fcs/left-aileron-pos-norm']
         ctrl_state_feats[1] = self.obs_dict[camp][agent_name]['fcs/right-aileron-pos-norm']
         ctrl_state_feats[2] = self.obs_dict[camp][agent_name]['fcs/elevator-pos-norm']
         ctrl_state_feats[3] = self.obs_dict[camp][agent_name]['fcs/throttle-pos-norm']
+        ctrl_state_feats[4] = self.obs_dict[camp][agent_name]['missile-launch']
+        ctrl_state_feats[5] = self.obs_dict[camp][agent_name]['switch-missile']
+        
 
         if camp == 'red':
             agent_id_feats = np.zeros(self.red_agents_num, dtype=np.float32)

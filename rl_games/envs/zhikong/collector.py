@@ -31,10 +31,10 @@ if __name__ == "__main__":
     # setting 1: 同向追击
 
     config = {"ip": '127.0.1.1', "num_agents":6, "worker_index":888, "scenes":1,
-             'excute_path': '/home/lzy/lzy/human-ai/Air/9-21/Linux/Mono/Linux/ZK.x86_64',
+             'excute_path': '/home/lzy/lzy/human-ai/Air/10-13/Linux/Mono/Linux/ZK.x86_64',
              "playmode": 1, "action_space_type": "MultiDiscrete", "red_agents_num":3,
              "blue_agents_num":3, "episode_max_length": 500, "change_target": False,
-             "setting": 0, "enemy_weapon": 1,}
+             "setting": 0, "enemy_weapon": 0,}
 
     env = AirCollectEnv(**config)
     obs = env.reset(init=True)
