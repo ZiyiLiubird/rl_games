@@ -153,7 +153,7 @@ class PFSPPlayerPool:
                 continue
             input_dict['obs'] = processed_obs[player.env_indices]
             out_dict = player(input_dict)
-            for key in res_dict:                
+            for key in res_dict:
                 res_dict[key][player.env_indices] = out_dict[key]
 
 

@@ -2,6 +2,8 @@ import os
 import os.path as osp
 import sys
 
+from wandb import agent
+
 parent_path = osp.dirname(__file__)
 # print(parent_path)
 sys.path.append(parent_path)
@@ -194,7 +196,11 @@ class AirCollectEnv(object):
                 ego_actions[al_id][0] = 0
             sr_locked = self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']
             ar_locked = self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']
-            if '99' not in str(sr_locked) or '99' not in str(ar_locked):
+            print(f"agent name: {agent_name}")
+            if agent_name == 'red_0':
+                print(f"red_0 sr locked: {sr_locked}")
+                print(f"red_0 ar locked: {ar_locked}")
+            if int(sr_locked) != 9 or  int(ar_locked) != 9999:
                 ego_actions[al_id][1] = 1
             else:
                 ego_actions[al_id][1] = 0

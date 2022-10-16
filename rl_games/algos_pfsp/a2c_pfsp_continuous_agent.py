@@ -46,6 +46,7 @@ class PFSPAgent(a2c_continuous.A2CAgent):
         os.makedirs(self.players_dir, exist_ok=True)
         self.update_win_rate = self.config.get('update_win_rate', 0.7)
         self.num_opponent_agents = self.num_agents
+        print(f"*** num agents: {self.num_opponent_agents} ***")
         self.player_pool = self._build_player_pool(params)
 
         self.games_to_check = self.config.get('games_to_check', 100)
@@ -85,14 +86,14 @@ class PFSPAgent(a2c_continuous.A2CAgent):
                 self.player_pool.thread_pool.shutdown()
             step_time_start = time.time()
             self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'], res_dict_op['actions'])
+            step_time_end = time.time()
+            step_time += (step_time_end - step_time_start)
 
             for k in update_list:
                 self.experience_buffer.update_data(k, n, res_dict[k])
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
 
-            step_time_end = time.time()
-            step_time += (step_time_end - step_time_start)
 
             if type(infos) == dict:
                 if "win_rate" in infos.keys():
@@ -123,7 +124,6 @@ class PFSPAgent(a2c_continuous.A2CAgent):
 
             self.current_rewards = self.current_rewards * not_dones.unsqueeze(1)
             self.current_lengths = self.current_lengths * not_dones
-            
             self.player_pool.update_player_metric(infos=infos)
             self.resample_op(env_done_indices.flatten())
 
@@ -205,6 +205,9 @@ class PFSPAgent(a2c_continuous.A2CAgent):
             self.current_rewards = self.current_rewards * not_dones.unsqueeze(1)
             self.current_lengths = self.current_lengths * not_dones
 
+            self.player_pool.update_player_metric(infos=infos)
+            self.resample_op(env_done_indices.flatten())
+
         last_values = self.get_values(self.obs)
 
         fdones = self.dones.float()
@@ -214,6 +217,7 @@ class PFSPAgent(a2c_continuous.A2CAgent):
         mb_rewards = self.experience_buffer.tensor_dict['rewards']
         mb_advs = self.discount_values(fdones, last_values, mb_fdones, mb_values, mb_rewards)
         mb_returns = mb_advs + mb_values
+        
         batch_dict = self.experience_buffer.get_transformed_list(swap_and_flatten01, self.tensor_list)
         batch_dict['returns'] = swap_and_flatten01(mb_returns)
         batch_dict['played_frames'] = self.batch_size
@@ -245,7 +249,7 @@ class PFSPAgent(a2c_continuous.A2CAgent):
         support n cooperative agents vs m other agents.
         """
         obs = self.vec_env.reset(init=True)
-        
+
         obs = self.obs_to_tensors(obs)
         # obs['obs_op'] = obs['obs'][self.num_actors*self.num_agents:]
         # obs['obs'] = obs['obs'][:self.num_actors*self.num_agents]

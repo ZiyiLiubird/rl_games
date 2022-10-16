@@ -1,4 +1,3 @@
-from dis import dis
 import os
 import os.path as osp
 import sys
@@ -15,7 +14,9 @@ import random
 import numpy as np
 from gym.spaces import Discrete, Box, Tuple
 from rl_games.envs.zhikong import comm_interface
+# from zhikong import comm_interface
 from .util import init_info, obs_feature_list, continuous_act_feature_list
+import time
 
 
 class AirCombatConEnv(object):
@@ -57,10 +58,10 @@ class AirCombatConEnv(object):
         self.scenes = kwargs.get('scenes', 1)
         self.red_agents_num = kwargs.get('red_agents_num', 1)
         self.blue_agents_num = kwargs.get('blue_agents_num', 1)
-        self.setting = kwargs.get("setting", 0)
         self.num_agents = self.red_agents_num
         self.apply_agent_ids = True
         self.concat_infos = True
+        self.setting = kwargs.get("setting", 0)
         print(f"Red Agents Num: {self.red_agents_num}")
         print(f"Blue Agents Num: {self.blue_agents_num}")
         assert (self.n_agents % 2 == 0), ("We only support N vs N now.")
@@ -70,7 +71,7 @@ class AirCombatConEnv(object):
         print(f"Starting environments...")
         print(f"{self.excute_cmd}")
         self.unity = os.popen(self.excute_cmd)
-        time.sleep(12)
+        time.sleep(15)
 
         self.env = comm_interface.env(self.ip, self.port, self.playmode)
         self._episode_steps = 0
@@ -78,7 +79,7 @@ class AirCombatConEnv(object):
         self.single_agent_mode = kwargs.get("single_agent_mode", False)
         self.win_record = deque(maxlen=30)
 
-        self.min_height = kwargs.get("min_height", 26000)
+        self.min_height = kwargs.get("min_height", 10000)
         # reward
         self.cum_rewards = 0
         self.reward_win = kwargs.get("reward_win", 100)
@@ -90,8 +91,7 @@ class AirCombatConEnv(object):
         self.reward_defeat = kwargs.get("reward_defeat", -1)
         self.reward_only_positive = kwargs.get("reward_only_positive", False)
         self.max_reward = (self.reward_win + 2 * self.reward_death_value * self.blue_agents_num
-                           + 200*self.blue_agents_num)
-
+                           + 200*self.blue_agents_num + 200 + 20)
         # death tracking
         self.red_death = np.zeros((self.red_agents_num), dtype=int)
         self.red_death_missile = np.zeros((self.red_agents_num), dtype=int)
@@ -133,10 +133,14 @@ class AirCombatConEnv(object):
                                 high=np.array([1.0, 1.0, 1.0], dtype=np.float32), 
                                 shape=(3,))
 
+        # 42 obs
+        shape = 81
         if self.red_agents_num == 1:
-            shape = 124
-        elif self.red_agents_num == 5:
-            shape = 484
+            shape = 81
+        elif self.red_agents_num == 2:
+            shape = 173 - 5  # 可能有问题 
+        elif self.red_agents_num == 3:
+            shape = 255 - 5  # 可能有问题
         self.observation_spaces = [
             Box(low=np.float32(-np.inf), high=np.float32(np.inf),
                 shape=(shape, ), dtype=np.float32) for _ in range(self.n_agents)]
@@ -157,6 +161,8 @@ class AirCombatConEnv(object):
                 self.current_actions['blue'][agent_name][act_feature] = 0.
 
     def reset(self, init=False):
+        # print(f"reset start...")
+        # print(f"init: {init}")
         self.red_death = np.zeros((self.red_agents_num), dtype=int)
         self.red_death_missile = np.zeros((self.red_agents_num), dtype=int)
         self.blue_death = np.zeros((self.blue_agents_num), dtype=int)
@@ -164,15 +170,10 @@ class AirCombatConEnv(object):
         self.cum_rewards = 0
         self._episode_steps = 0
         self.record = False
-        self.red_weapon_state = dict()
-        for ego_agent_name in self.red_agents:
-            self.red_weapon_state[ego_agent_name] = {}
         if init:
-            # print(self.dict_init)
             self.obs_dict = self.env.reset(self.dict_init)
             self.prev_obs_dict = None
         else:
-            # print(self.dict_reset)
             self.obs_dict = self.env.reset(self.dict_reset)
             self.prev_obs_dict = None
         # print(f"env reset success !")
@@ -193,10 +194,15 @@ class AirCombatConEnv(object):
         for al_id, agent_name in enumerate(agents):
             if int(self.prev_obs_dict[camp][agent_name]['DeathEvent']) != 99:
                 continue
-            if int(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange']) == 0:
+            if int(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange']) == 99:
                 continue
-            fly_ids = self.into_view(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange'])
-            goals = fly_ids.nonzero()[0]
+            # fly_ids = self.into_view(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange'])
+            print(f"TargetEnterAttackRange: {self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange']}")
+            fly_ids = self._view_sin(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange'], base=0)
+            fly_ids = np.array(fly_ids)
+            # goals = fly_ids.nonzero()[0]
+            goals = fly_ids
+            print(f"!!! goals !!! {goals}")
             if len(goals) == 0:
                 continue
             ego_x, ego_y, ego_z = self.GPS_to_xyz(self.prev_obs_dict[camp][agent_name]['position/lat-geod-deg'],
@@ -216,7 +222,7 @@ class AirCombatConEnv(object):
                     self.prev_obs_dict[camp_another][enemy]['position/long-gc-deg'],
                     self.prev_obs_dict[camp_another][enemy]['position/h-sl-ft'])
                 dist = np.linalg.norm(np.array([enemy_x-ego_x, enemy_y-ego_y, enemy_z-ego_z]))
-
+                print(f"!!! dist !!! {dist}")
                 if dist < 2000:
                     if bullet_nums > 0:
                      ego_actions[al_id][1] = 2
@@ -224,7 +230,7 @@ class AirCombatConEnv(object):
                         continue
                 elif dist <= 12000:
                     if aim_mode == 0:
-                        if srmissile_nums != 0 and sr_locked != 9:
+                        if srmissile_nums != 0 and sr_locked != 99:
                             ego_actions[al_id][1] = 1
                         else:
                             continue
@@ -232,16 +238,12 @@ class AirCombatConEnv(object):
                         ego_actions[al_id][0] = 1
                 else:
                     if aim_mode == 1:
-                        if armissile_nums != 0 and ar_locked != 9999:
+                        if armissile_nums != 0 and ar_locked != 99:
                             ego_actions[al_id][1] = 1
-                        else:
-                            continue
                     else:
                         ego_actions[al_id][0] = 1
 
             else: # goals > 1
-                # if int(sr_locked) == 9 and int(ar_locked) == 9999:
-                #     continue
                 if aim_mode == 0:
                     if armissile_nums > 0:
                         ego_actions[al_id][0] = 1
@@ -252,12 +254,39 @@ class AirCombatConEnv(object):
                     if armissile_nums > 0:
                         if ar_locked:
                             ego_actions[al_id][1] = 1
-                        else:
-                            continue
                     elif srmissile_nums > 0:
                         ego_actions[al_id][0] = 1
 
         return ego_actions
+
+    # def weapon_actions(self, ego_actions, camp='red'):
+    #     """
+    #     switch missile and weapon launch
+    #     """
+    #     agents = self.camp_2_agents[camp]
+    #     # srmissile_nums = np.zeros((self.red_agents_num, 1), dtype=np.float32)
+    #     for al_id, agent_name in enumerate(agents):
+    #         if int(self.prev_obs_dict[camp][agent_name]['DeathEvent']) != 99:
+    #             continue
+    #         srmissile_nums = self.prev_obs_dict[camp][agent_name]['SRAAMCurrentNum']
+    #         armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
+    #         aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
+    #         if srmissile_nums == 0 and armissile_nums != 0 and aim_mode == 0:
+    #             ego_actions[al_id][0] = 1
+    #         elif (armissile_nums == 0 and srmissile_nums != 0) and aim_mode == 1:
+    #             ego_actions[al_id][0] = 1
+    #         elif (armissile_nums != 0 and srmissile_nums !=0) and aim_mode == 0:
+    #             ego_actions[al_id][0] = 1
+    #         else:
+    #             ego_actions[al_id][0] = 0
+    #         sr_locked = self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']
+    #         ar_locked = self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']
+    #         if '99' not in str(sr_locked) or '99' not in str(ar_locked):
+    #             ego_actions[al_id][1] = 1
+    #         else:
+    #             ego_actions[al_id][1] = 0
+
+    #     return ego_actions
 
     def step(self, action):
         """A single environment step. Returns reward, terminated, info."""
@@ -280,11 +309,13 @@ class AirCombatConEnv(object):
         self.process_actions(ego_action, op_action, ego_weapon_actions, op_weapon_actions)
 
         self.obs_dict = self.env.step(self.current_actions)
+
         self._episode_steps += 1
 
         if self.single_agent_mode:
             reward = self.reward_single_agent_mode()
         else:
+            # print("=========这是一个检查点==========")
             reward = self.reward_battle()
 
         game_done = self.judge_done()
@@ -299,9 +330,10 @@ class AirCombatConEnv(object):
 
         obs_dict = {}
         obs_dict['obs'], obs_dict['obs_op'] = obs, obs_op
-        infos['win'] = np.zeros((self.red_agents_num), dtype=np.float32)
-        infos['lose'] = np.zeros((self.red_agents_num), dtype=np.float32)
-        infos['draw'] = np.zeros((self.red_agents_num), dtype=np.float32)
+
+        infos['win'] = False
+        infos['lose'] = False
+        infos['draw'] = False
 
         if not self.record:
             if self.blue_all_dead and not self.red_all_dead:
@@ -310,21 +342,27 @@ class AirCombatConEnv(object):
                 else:
                     reward += self.reward_win
                 self.record = True
-                infos['win'] = np.ones((self.red_agents_num), dtype=np.float32)
+                infos['win'] = True
+                infos['lose'] = False
+                infos['draw'] = False
             elif self.red_all_dead:
                 if self.reward_sparse and not self.single_agent_mode:
                     reward = -1
                 else:
                     reward += self.reward_defeat
                 self.record = True
-                infos['lose'] = np.ones((self.red_agents_num), dtype=np.float32)
+                infos['win'] = False
+                infos['lose'] = True
+                infos['draw'] = False
         elif self._episode_steps >= self.episode_limit and not self.record:
-                infos['draw'] = np.ones((self.red_agents_num), dtype=np.float32)
+                infos['win'] = False
+                infos['lose'] = False
+                infos['draw'] = True
                 self.record = True
         else:
-            infos['win'] = np.zeros((self.red_agents_num), dtype=np.float32)
-            infos['lose'] = np.zeros((self.red_agents_num), dtype=np.float32)
-            infos['draw'] = np.zeros((self.red_agents_num), dtype=np.float32)
+            infos['win'] = False
+            infos['lose'] = False
+            infos['draw'] = False
 
         if self.reward_scale:
             reward /= self.max_reward / self.reward_scale_rate
@@ -359,6 +397,11 @@ class AirCombatConEnv(object):
         obs = np.zeros((self.red_agents_num, self.observation_space.shape[0]), dtype=np.float32)
         obs_op = np.zeros((self.blue_agents_num, self.observation_space.shape[0]), dtype=np.float32)
 
+        self.red_view_ego_obs = self.get_obs_ego(camp='red')
+        self.red_view_op_obs = self.get_obs_op(camp='blue')
+        self.blue_view_ego_obs = self.get_obs_ego(camp='blue')
+        self.blue_view_op_obs = self.get_obs_op(camp='red')
+
         for agent_name in ego_obs_dict.keys():
             if int(ego_obs_dict[agent_name]['DeathEvent']) != 99:
                 continue
@@ -373,255 +416,113 @@ class AirCombatConEnv(object):
 
         return obs, obs_op
 
-    def get_obs_op(self, ego_x, ego_y, ego_z,
-                   ego_ang_x, ego_ang_y, ego_ang_z,
-                   camp='blue'):
+    def get_obs_op(self, camp='blue'):
         """
         opponent info including health and vel infos.
         """
+        op_infos = np.zeros((self.blue_agents_num, 16), dtype=np.float32)
+        agents = self.camp_2_agents[camp]
 
-        enemy_agents = self.camp_2_agents[camp]
-        enemy_agents_num = self.camp_2_agents_num[camp]
-        enemy_infos = np.zeros((enemy_agents_num, 46), dtype=np.float32)
+        for i, agent_name in enumerate(agents):
+            if int(self.obs_dict[camp][agent_name]['DeathEvent']) != 99:
+                continue
+            op_infos[i, 0] = self.obs_dict[camp][agent_name]['LifeCurrent']
+            op_infos[i, 1] = self.obs_dict[camp][agent_name]['position/long-gc-deg']
+            op_infos[i, 2] = self.obs_dict[camp][agent_name]['position/lat-geod-deg']
+            op_infos[i, 3] = self.obs_dict[camp][agent_name]['velocities/u-fps']
+            op_infos[i, 4] = self.obs_dict[camp][agent_name]['velocities/v-fps']
+            op_infos[i, 5] = self.obs_dict[camp][agent_name]['velocities/w-fps']
+            op_infos[i, 6] = self.obs_dict[camp][agent_name]['velocities/p-rad_sec']
+            op_infos[i, 7] = self.obs_dict[camp][agent_name]['velocities/q-rad_sec']
+            op_infos[i, 8] = self.obs_dict[camp][agent_name]['velocities/r-rad_sec']
+            op_infos[i, 9] = self.obs_dict[camp][agent_name]['velocities/h-dot-fps']
+            op_infos[i, 10] = self.obs_dict[camp][agent_name]['velocities/ve-fps']
+            op_infos[i, 11] = self.obs_dict[camp][agent_name]['velocities/mach']
+            op_infos[i, 12] = self.obs_dict[camp][agent_name]['position/h-sl-ft']
+            op_infos[i, 13] = self.obs_dict[camp][agent_name]['attitude/pitch-rad']
+            op_infos[i, 14] = self.obs_dict[camp][agent_name]['attitude/roll-rad']
+            op_infos[i, 15] = self.obs_dict[camp][agent_name]['attitude/psi-deg']
 
-        for i, name in enumerate(enemy_agents):
+
+        obs_op = op_infos.flatten()
+        return obs_op
+
+    def get_obs_ego(self, camp='red'):
+
+        ego_agents = self.camp_2_agents[camp]
+        ego_agent_num = self.camp_2_agents_num[camp]
+        ego_infos = np.zeros((ego_agent_num, 20+10+27), dtype=np.float32)
+
+        for i, name in enumerate(ego_agents):
             if int(self.obs_dict[camp][name]['DeathEvent']) != 99:
                 continue
-            enemy_infos[i, 0] = self.obs_dict[camp][name]['LifeCurrent']
-            enemy_infos[i, 1] = self.obs_dict[camp][name]['position/long-gc-deg']
-            enemy_infos[i, 2] = self.obs_dict[camp][name]['position/lat-geod-deg']
-            enemy_infos[i, 3] = self.obs_dict[camp][name]['position/h-sl-ft']
-            enemy_x, enemy_y, enemy_z = self.GPS_to_xyz(enemy_infos[i, 2], enemy_infos[i, 1],
-                                                        enemy_infos[i, 3])
-            enemy_ang_x, enemy_ang_y, enemy_ang_z = \
-                self.Euler_to_xyz(self.obs_dict[camp][name]['attitude/psi-deg'],
-                                  self.obs_dict[camp][name]['attitude/pitch-rad'],
-                                  self.obs_dict[camp][name]['attitude/roll-rad'])
+            # 缺失经纬度坐标？
+            ego_infos[i, 0] = self.obs_dict[camp][name]['LifeCurrent']
+            ego_infos[i, 1] = self.obs_dict[camp][name]['position/long-gc-deg']
+            ego_infos[i, 2] = self.obs_dict[camp][name]['position/lat-geod-deg']
+            ego_infos[i, 3] = self.obs_dict[camp][name]['position/h-sl-ft']
+            ego_infos[i, 4] = self.obs_dict[camp][name]['attitude/pitch-rad']
+            ego_infos[i, 5] = self.obs_dict[camp][name]['attitude/roll-rad']
+            ego_infos[i, 6] = self.obs_dict[camp][name]['attitude/psi-deg']
+            ego_infos[i, 7] = self.obs_dict[camp][name]['velocities/u-fps']
+            ego_infos[i, 8] = self.obs_dict[camp][name]['velocities/v-fps']
+            ego_infos[i, 9] = self.obs_dict[camp][name]['velocities/w-fps']
+            ego_infos[i, 10] = self.obs_dict[camp][name]['velocities/p-rad_sec']
+            ego_infos[i, 11] = self.obs_dict[camp][name]['velocities/q-rad_sec']
+            ego_infos[i, 12] = self.obs_dict[camp][name]['velocities/ve-fps']
+            ego_infos[i, 13] = self.obs_dict[camp][name]['velocities/h-dot-fps']
+            ego_infos[i, 14] = self.obs_dict[camp][name]['velocities/mach']
+            ego_infos[i, 15] = self.obs_dict[camp][name]['forces/load-factor']
+            ego_infos[i, 16] = self.obs_dict[camp][name]['IsOutOfValidBattleArea']
+            ego_infos[i, 17] = self.obs_dict[camp][name]['OutOfValidBattleAreaCurrentDuration']
+            ego_infos[i, 18] = self.obs_dict[camp][name]['SRAAMCurrentNum']
+            ego_infos[i, 19] = self.obs_dict[camp][name]['AMRAAMCurrentNum']
+            ego_infos[i, 20+int(self.obs_dict[camp][name]['AimMode'])] = 1
+            ego_infos[i, 22+int(self.obs_dict[camp][name]['SRAAM1_CanReload'])] = 1
+            ego_infos[i, 24+int(self.obs_dict[camp][name]['SRAAM2_CanReload'])] = 1
+            ego_infos[i, 26+int(self.obs_dict[camp][name]['AMRAAMCanReload'])] = 1
+            ego_infos[i, 28+int(self.obs_dict[camp][name]['IfPresenceHitting'])] = 1
 
-            ego_direction_vector = np.array([ego_ang_x, ego_ang_y, ego_ang_z])
-            op_direction_vector = np.array([enemy_ang_x, enemy_ang_y, enemy_ang_z])
-            position_direction_vector = np.array([enemy_ang_x - ego_x, enemy_ang_y - ego_y, enemy_ang_z - ego_z])
+            if '99' not in str(self.obs_dict[camp][name]['TargetIntoView']):
+                indices = self._view_sin(self.obs_dict[camp][name]['TargetIntoView'], base=30)
+                ego_infos[i, indices] = 1
+            if '99' not in str(self.obs_dict[camp][name]['AllyIntoView']):
+                indices = self._view_sin(self.obs_dict[camp][name]['AllyIntoView'], base=35)
+                ego_infos[i, indices] = 1
+            if '99' not in str(self.obs_dict[camp][name]['TargetEnterAttackRange']):
+                indices = self._view_sin(self.obs_dict[camp][name]['TargetEnterAttackRange'], base=40)
+                ego_infos[i, indices] = 1
+            if '99' not in str(self.obs_dict[camp][name]['SRAAMTargetLocked']):
+                indices = self._view_sin(self.obs_dict[camp][name]['SRAAMTargetLocked'], base=45)
+                ego_infos[i, indices] = 1
+            if '99' not in str(self.obs_dict[camp][name]['AMRAAMlockedTarget']):
+                indices = self._view_sin(self.obs_dict[camp][name]['AMRAAMlockedTarget'], base=50)
+                ego_infos[i, indices] = 1
 
-            theta_angle = self.calculation_tool(ego_direction_vector, position_direction_vector, mode='array_angle')
-            phi_angle = self.calculation_tool(op_direction_vector, position_direction_vector, mode='array_angle')
+            ego_infos[i, 55 + int(self.obs_dict[camp][name]['MissileAlert'])] = 1
 
-            relative_x = enemy_x - ego_x
-            relative_y = enemy_y - ego_y
-            relative_z = enemy_z - ego_z
-            relative_dist = np.linalg.norm([relative_x, relative_y, relative_z])
-            
-            enemy_infos[i, 4] = relative_x
-            enemy_infos[i, 5] = relative_y
-            enemy_infos[i, 6] = relative_z
-            enemy_infos[i, 7] = relative_dist
-            enemy_infos[i, 8] = theta_angle
-            enemy_infos[i, 9] = phi_angle
-
-            enemy_infos[i, 10] = self.obs_dict[camp][name]['attitude/psi-deg']
-            enemy_infos[i, 11] = self.obs_dict[camp][name]['velocities/ve-fps']
-            enemy_infos[i, 12] = self.obs_dict[camp][name]['velocities/h-dot-fps']
-            enemy_infos[i, 13] = self.obs_dict[camp][name]['velocities/v-north-fps']
-            enemy_infos[i, 14] = self.obs_dict[camp][name]['velocities/v-east-fps']
-            enemy_infos[i, 15] = self.obs_dict[camp][name]['velocities/v-down-fps']
-
-            enemy_infos[i, 16] = self.obs_dict[camp][name]['SRAAMCurrentNum']
-            enemy_infos[i, 17] = self.obs_dict[camp][name]['AMRAAMCurrentNum']
-            enemy_infos[i, 18] = self.obs_dict[camp][name]['BulletCurrentNum']
-            enemy_infos[i, 19+int(self.obs_dict[camp][name]['IfPresenceHitting'])] = 1
-
-            if int(self.obs_dict[camp][name]['TargetIntoView']) != 0:
-                fly_ids = self.into_view(self.obs_dict[camp][name]['TargetIntoView'])
-                enemy_infos[i, 21:26] = fly_ids
-            if int(self.obs_dict[camp][name]['AllyIntoView']) != 0:
-                fly_ids = self.into_view(self.obs_dict[camp][name]['AllyIntoView'])
-                enemy_infos[i, 26:31] = fly_ids
-            if int(self.obs_dict[camp][name]['TargetEnterAttackRange']) != 0:
-                fly_ids = self.into_view(self.obs_dict[camp][name]['TargetEnterAttackRange'])
-                enemy_infos[i, 31:36] = fly_ids
-            if int(self.obs_dict[camp][name]['SRAAMTargetLocked']) != 9:
-                fly_ids = int(self.obs_dict[camp][name]['SRAAMTargetLocked'])
-                enemy_infos[i, 36+fly_ids] = 1
-            if int(self.obs_dict[camp][name]['AMRAAMlockedTarget']) != 9999:
-                fly_list = self.lockedtarget(self.obs_dict[camp][name]['AMRAAMlockedTarget'])
-                enemy_infos[i, 41+fly_list] = 1
-
-        return enemy_infos.flatten()
-
-    def get_obs_alley(self, ego_agent_name,
-                      ego_x, ego_y, ego_z, camp='red'):
-
-        alley_agents = deepcopy(self.camp_2_agents[camp])
-        alley_agents.pop(int(ego_agent_name.split('_')[-1]))
-        alley_agent_num = len(alley_agents)
-        alley_infos = np.zeros((alley_agent_num, 43), dtype=np.float32)
-
-        for i, name in enumerate(alley_agents):
-            if name == ego_agent_name:
-                continue
-            if int(self.obs_dict[camp][name]['DeathEvent']) != 99:
-                continue
-            alley_infos[i, 0] = self.obs_dict[camp][name]['LifeCurrent']
-            alley_infos[i, 1] = self.obs_dict[camp][name]['position/long-gc-deg']
-            alley_infos[i, 2] = self.obs_dict[camp][name]['position/lat-geod-deg']
-            alley_infos[i, 3] = self.obs_dict[camp][name]['position/h-sl-ft']
-            alley_x, alley_y, alley_z = self.GPS_to_xyz( alley_infos[i, 2], alley_infos[i, 1],
-                                                        alley_infos[i, 3])
-
-            relative_x = alley_x - ego_x
-            relative_y = alley_y - ego_y
-            relative_z = alley_z - ego_z
-            relative_dist = np.linalg.norm([relative_x, relative_y, relative_z])
-            alley_infos[i, 4] = relative_x
-            alley_infos[i, 5] = relative_y
-            alley_infos[i, 6] = relative_z
-            alley_infos[i, 7] = relative_dist
-
-            alley_infos[i, 8] = self.obs_dict[camp][name]['attitude/psi-deg']
-            alley_infos[i, 9] = self.obs_dict[camp][name]['velocities/ve-fps']
-            alley_infos[i, 10] = self.obs_dict[camp][name]['velocities/h-dot-fps']
-            alley_infos[i, 11] = self.obs_dict[camp][name]['velocities/v-north-fps']
-            alley_infos[i, 12] = self.obs_dict[camp][name]['velocities/v-east-fps']
-            alley_infos[i, 13] = self.obs_dict[camp][name]['velocities/v-down-fps']
-
-            alley_infos[i, 14] = self.obs_dict[camp][name]['SRAAMCurrentNum']
-            alley_infos[i, 15] = self.obs_dict[camp][name]['AMRAAMCurrentNum']
-            alley_infos[i, 16+int(self.obs_dict[camp][name]['IfPresenceHitting'])] = 1
-
-            if int(self.obs_dict[camp][name]['TargetIntoView']) != 0:
-                fly_ids = self.into_view(self.obs_dict[camp][name]['TargetIntoView'])
-                alley_infos[i, 18:23] = fly_ids
-            if int(self.obs_dict[camp][name]['AllyIntoView']) != 0:
-                fly_ids = self.into_view(self.obs_dict[camp][name]['AllyIntoView'])
-                alley_infos[i, 23:28] = fly_ids
-            if int(self.obs_dict[camp][name]['TargetEnterAttackRange']) != 0:
-                fly_ids = self.into_view(self.obs_dict[camp][name]['TargetEnterAttackRange'])
-                alley_infos[i, 28:33] = fly_ids
-            if int(self.obs_dict[camp][name]['SRAAMTargetLocked']) != 9:
-                fly_ids = int(self.obs_dict[camp][name]['SRAAMTargetLocked'])
-                alley_infos[i, 33+fly_ids] = 1
-            if int(self.obs_dict[camp][name]['AMRAAMlockedTarget']) != 9999:
-                fly_list = self.lockedtarget(self.obs_dict[camp][name]['AMRAAMlockedTarget'])
-                alley_infos[i, 38+fly_list] = 1
-
-        return alley_infos.flatten()
+        return ego_infos.flatten()
 
     def get_obs_agent(self, agent_name, camp='red'):
-        """Returns observation for agent_name. The observation is composed of:
-
-        - ego agent features
-        - ally features
-        - enemy features
-        - ally features
-        - agent unit features (health, shield, unit_type)
-
-        All of this information is flattened and concatenated into a list,
-        in the aforementioned order.
-
-        NOTE: Agents should have access only to their local observations
-        during decentralised execution.
-        """
-
-        ego_infos = np.zeros((68), dtype=np.float32)
-
-        ego_infos[0] = self.obs_dict[camp][agent_name]['LifeCurrent']
-        ego_infos[1] = self.obs_dict[camp][agent_name]['position/long-gc-deg']
-        ego_infos[2] = self.obs_dict[camp][agent_name]['position/lat-geod-deg']
-        ego_infos[3] = self.obs_dict[camp][agent_name]['position/h-sl-ft']
-        # ego agent x y z
-        ego_x, ego_y, ego_z = self.GPS_to_xyz(lat=self.obs_dict[camp][agent_name]['position/lat-geod-deg'],
-                                  lon=self.obs_dict[camp][agent_name]['position/long-gc-deg'],
-                                  height=self.obs_dict[camp][agent_name]['position/h-sl-ft'])
-
-        ego_ang_x, ego_ang_y, ego_ang_z = \
-            self.Euler_to_xyz(self.obs_dict[camp][agent_name]['attitude/psi-deg'],
-                                self.obs_dict[camp][agent_name]['attitude/pitch-rad'],
-                                self.obs_dict[camp][agent_name]['attitude/roll-rad'])
-
-        ego_infos[4] = ego_x
-        ego_infos[5] = ego_y
-        ego_infos[6] = ego_z
-        ego_infos[7] = ego_ang_x
-        ego_infos[8] = ego_ang_y
-        ego_infos[9] = ego_ang_z
-
-        ego_infos[10] = self.obs_dict[camp][agent_name]['attitude/pitch-rad']
-        ego_infos[11] = self.obs_dict[camp][agent_name]['attitude/roll-rad']
-        ego_infos[12] = self.obs_dict[camp][agent_name]['attitude/psi-deg']
-        ego_infos[13] = self.obs_dict[camp][agent_name]['velocities/u-fps']
-        ego_infos[14] = self.obs_dict[camp][agent_name]['velocities/v-fps']
-        ego_infos[15] = self.obs_dict[camp][agent_name]['velocities/w-fps']
-
-        ego_infos[16] = self.obs_dict[camp][agent_name]['velocities/v-north-fps']
-        ego_infos[17] = self.obs_dict[camp][agent_name]['velocities/v-east-fps']
-        ego_infos[18] = self.obs_dict[camp][agent_name]['velocities/v-down-fps']
-
-        ego_infos[19] = self.obs_dict[camp][agent_name]['velocities/p-rad_sec']
-        ego_infos[20] = self.obs_dict[camp][agent_name]['velocities/q-rad_sec']
-        ego_infos[21] = self.obs_dict[camp][agent_name]['velocities/ve-fps']
-        ego_infos[22] = self.obs_dict[camp][agent_name]['velocities/h-dot-fps']
-        ego_infos[23] = self.obs_dict[camp][agent_name]['forces/load-factor']
-        ego_infos[24] = self.obs_dict[camp][agent_name]['IsOutOfValidBattleArea']
-        ego_infos[25] = self.obs_dict[camp][agent_name]['OutOfValidBattleAreaCurrentDuration']
-        ego_infos[26] = self.obs_dict[camp][agent_name]['SRAAMCurrentNum']
-        ego_infos[27] = self.obs_dict[camp][agent_name]['AMRAAMCurrentNum']
-        ego_infos[28] = self.obs_dict[camp][agent_name]['BulletCurrentNum']
-        ego_infos[29+int(self.obs_dict[camp][agent_name]['AimMode'])] = 1
-        ego_infos[31+int(self.obs_dict[camp][agent_name]['SRAAM1_CanReload'])] = 1
-        ego_infos[33+int(self.obs_dict[camp][agent_name]['SRAAM2_CanReload'])] = 1
-        ego_infos[35+int(self.obs_dict[camp][agent_name]['AMRAAMCanReload'])] = 1
-        ego_infos[37+int(self.obs_dict[camp][agent_name]['IfPresenceHitting'])] = 1
-
-        if int(self.obs_dict[camp][agent_name]['TargetIntoView']) != 0:
-            fly_ids = self.into_view(self.obs_dict[camp][agent_name]['TargetIntoView'])
-            ego_infos[39:44] = fly_ids
-        if int(self.obs_dict[camp][agent_name]['AllyIntoView']) != 0:
-            fly_ids = self.into_view(self.obs_dict[camp][agent_name]['AllyIntoView'])
-            ego_infos[44:49] = fly_ids
-        if int(self.obs_dict[camp][agent_name]['TargetEnterAttackRange']) != 0:
-            fly_ids = self.into_view(self.obs_dict[camp][agent_name]['TargetEnterAttackRange'])
-            ego_infos[49:54] = fly_ids
-
-        if int(self.obs_dict[camp][agent_name]['SRAAMTargetLocked']) != 9:
-            fly_ids = int(self.obs_dict[camp][agent_name]['SRAAMTargetLocked'])
-            ego_infos[54+fly_ids] = 1
-        if int(self.obs_dict[camp][agent_name]['AMRAAMlockedTarget']) != 9999:
-            fly_list = self.lockedtarget(self.obs_dict[camp][agent_name]['AMRAAMlockedTarget'])
-            ego_infos[59+fly_list] = 1
-
-        ego_infos[64+int(self.obs_dict[camp][agent_name]['MissileAlert'])] = 1
-        ego_infos[66] = self.obs_dict[camp][agent_name]['EnvelopeMin']
-        ego_infos[67] = self.obs_dict[camp][agent_name]['EnvelopeMax']
-
-        ctrl_state_feats = np.zeros((9), dtype=np.float32)
+        ctrl_state_feats = np.zeros((4), dtype=np.float32)
         ctrl_state_feats[0] = self.obs_dict[camp][agent_name]['fcs/left-aileron-pos-norm']
         ctrl_state_feats[1] = self.obs_dict[camp][agent_name]['fcs/right-aileron-pos-norm']
         ctrl_state_feats[2] = self.obs_dict[camp][agent_name]['fcs/elevator-pos-norm']
         ctrl_state_feats[3] = self.obs_dict[camp][agent_name]['fcs/throttle-pos-norm']
 
-        # last step action
-        ctrl_state_feats[4] = self.obs_dict[camp][agent_name]['fcs/aileron-cmd-norm']
-        ctrl_state_feats[5] = self.obs_dict[camp][agent_name]['fcs/elevator-cmd-norm']
-        ctrl_state_feats[6] = self.obs_dict[camp][agent_name]['fcs/throttle-cmd-norm']
-        ctrl_state_feats[7] = self.obs_dict[camp][agent_name]['missile-launch']
-        ctrl_state_feats[8] = self.obs_dict[camp][agent_name]['switch-missile']
-
-        alley_feats = self.get_obs_alley(ego_agent_name=agent_name,
-                                         ego_x=ego_x, ego_y=ego_y, ego_z=ego_z, camp=camp)
-
         if camp == 'red':
-            enemy_feats = self.get_obs_op(ego_x=ego_x, ego_y=ego_y, ego_z=ego_z,
-                                          ego_ang_x=ego_ang_x, ego_ang_y=ego_ang_y, ego_ang_z=ego_ang_z,
-                                          camp='blue')
             agent_id_feats = np.zeros(self.red_agents_num, dtype=np.float32)
-            # threat info
-            # threat_info = self._oracal_guiding_feature(agent_name, camp, op_camp='blue')
+            ego_infos = self.red_view_ego_obs
+            op_infos = self.red_view_op_obs
+            op_camp = 'blue'
         else:
-            enemy_feats = self.get_obs_op(ego_x=ego_x, ego_y=ego_y, ego_z=ego_z,
-                                          ego_ang_x=ego_ang_x, ego_ang_y=ego_ang_y, ego_ang_z=ego_ang_z,
-                                          camp='red')
             agent_id_feats = np.zeros(self.blue_agents_num, dtype=np.float32)
-            # threat info
-            # threat_info = self._oracal_guiding_feature(agent_name, camp, op_camp='red')
+            ego_infos = self.blue_view_ego_obs
+            op_infos = self.blue_view_op_obs
+            op_camp = 'red'
+
+        # threat info
+        threat_info = self._oracal_guiding_feature(agent_name, camp, op_camp)
 
         if self.apply_agent_ids:
             if camp == 'red':
@@ -630,10 +531,14 @@ class AirCombatConEnv(object):
                 agent_id_feats[self.blue_ni_mapping[agent_name]] = 1
 
         obs_all = np.concatenate([
-            ego_infos.flatten(), ctrl_state_feats.flatten(), alley_feats.flatten(),
-            enemy_feats.flatten(), agent_id_feats.flatten(),
-            # threat_info.flatten(), agent_id_feats.flatten()
+            ego_infos.flatten(), ctrl_state_feats.flatten(), op_infos.flatten(),
+            threat_info.flatten(), agent_id_feats.flatten()
         ])
+
+        # if camp == 'red':
+        #     self.print(f"                                         oppo: {op_infos[1: 3]}")
+        #     self.print(f"ctrl:{ego_infos[1: 4]}")
+
         return obs_all
 
     def _oracal_guiding_feature(self, agent_name, ego_camp, op_camp):
@@ -684,32 +589,18 @@ class AirCombatConEnv(object):
         # print(self.cur_delta_height, self.old_delta_height, self.cur_delta_height-self.old_delta_height)
         return threat_info
 
-    def into_view(self, attribute):
-        fly_ids = np.zeros((5), dtype=np.float32)
-        index = int(attribute)
-        st = 0
-        while index:
-            fly = index % 10
-            index = index // 10
-            fly_ids[st] = fly
-            st += 1
+    def _view_sin(self, attribute, base):
 
-        return fly_ids
+        attribute = str(int(attribute))
+        indices = []
+        for i in attribute:
+            if i == '.':
+                continue
+            indices.append(int(i)+base)
+        return indices
 
-    def lockedtarget(self, attribute):
-        index = int(attribute)
-        st = 0
-        fly_ids = []
-        while index:
-            fly = index % 10
-            index = index // 10
-            if fly != 9:
-                fly_ids.append(fly)
-            st += 1
-        if st != 4 and 0 not in fly_ids:
-            fly_ids.append(0)
-
-        return np.array(fly_ids)
+    def get_state(self, agents_dict):
+        return None
 
     def judge_done(self):
 
@@ -763,6 +654,66 @@ class AirCombatConEnv(object):
     def seed(self, seed=1):
         random.seed(seed)
         np.random.seed(seed=seed)
+
+    # def reward_battle(self):
+    #     """Reward function when self.reward_spare==False.
+    #     Returns accumulative hit/shield point damage dealt to the enemy
+    #     + reward_death_value per enemy unit killed, and, in case
+    #     self.reward_only_positive == False, - (damage dealt to ally units
+    #     + reward_death_value per ally unit killed) * self.reward_negative_scale
+    #     """
+
+    #     if self.reward_sparse:
+    #         return 0
+
+    #     neg_scale = self.reward_negative_scale
+    #     delta_ally = 0
+    #     delta_enemy = 0
+    #     delta_deaths = 0
+    #     locked = 0
+    #     area = 0
+    #     height = 0
+
+    #     locked_adv, be_locked_adv = self.locked_reward()
+    #     locked += np.sum(locked_adv) * 2
+    #     locked -= np.sum(be_locked_adv) * neg_scale
+
+    #     height, area = self.area_reward()
+    #     height = np.sum(height)
+    #     area = np.sum(area)
+
+    #     for al_id, ego_agent_name in enumerate(self.red_agents):
+    #         if not self.red_death[al_id]:
+    #             prev_health = self.prev_obs_dict['red'][ego_agent_name]['LifeCurrent']
+    #             current_health = self.obs_dict['red'][ego_agent_name]['LifeCurrent']
+    #             if int(current_health) == 0 or int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
+    #                 self.red_death[al_id] = 1
+    #                 if not self.reward_only_positive:
+    #                     delta_deaths -= self.reward_death_value * neg_scale 
+    #                 delta_ally += neg_scale * prev_health
+    #             else:
+    #                 delta_ally += neg_scale * (prev_health - current_health)
+
+    #     for e_id, op_agent_name in enumerate(self.blue_agents):
+    #         if not self.blue_death[e_id]:
+    #             prev_health = self.prev_obs_dict['blue'][op_agent_name]['LifeCurrent']
+    #             current_health = self.obs_dict['blue'][op_agent_name]['LifeCurrent']
+    #             if int(current_health) == 0 or int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
+    #                 self.blue_death[e_id] = 1
+    #                 if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) == 0:
+    #                     delta_deaths += self.reward_death_value
+    #                 else:
+    #                     delta_deaths += 2 * self.reward_death_value
+    #                 delta_enemy += prev_health
+    #             else:
+    #                 delta_enemy += prev_health - current_health 
+
+    #     if self.reward_only_positive:
+    #         reward = abs(delta_enemy + delta_deaths)
+    #     else:
+    #         reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
+
+    #     return reward
 
     def reward_single_agent_mode(self):
         pass
@@ -844,6 +795,10 @@ class AirCombatConEnv(object):
 
         return np.array(elevation, dtype=np.float32),  np.array(azimuth, dtype=np.float32)
 
+    def print(self, data):
+        if self.port == 8888:
+            print(data)
+
     def reward_battle(self):
         """Reward function when self.reward_spare==False.
         Returns accumulative hit/shield point damage dealt to the enemy
@@ -859,10 +814,12 @@ class AirCombatConEnv(object):
         delta_ally = 0
         delta_enemy = 0
         delta_deaths = 0
+        weapon_launch = 0
         locked = 0
         area = 0
         height = 0
 
+        # weapon_launch = np.sum(self.invalid_launch) * neg_scale
         locked_adv, be_locked_adv = self.locked_reward()
         locked += np.sum(locked_adv) * 2
         locked -= np.sum(be_locked_adv) * neg_scale
@@ -897,150 +854,81 @@ class AirCombatConEnv(object):
                 else:
                     delta_enemy += prev_health - current_health
 
-        reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
+        if self.reward_only_positive:
+            reward = abs(delta_enemy + delta_deaths)
+        else:
+            reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale - weapon_launch
 
         for al_id, ego_agent_name in enumerate(self.red_agents):
             for e_id, op_agent_name in enumerate(self.blue_agents):
                 if not self.red_death[al_id] and not self.blue_death[e_id]:
-                    th_ang, th_dis, pitch_reward = self.one_threat_index(ego_agent_name, op_agent_name)
+                    th_ang, th_dis = self.one_threat_index(ego_agent_name, op_agent_name)
                     reward += 3 * (1. - th_ang) + 2 * (1. - th_dis)
-                    reward += pitch_reward
         return reward
 
-    def one_threat_index(self, ego_agent_name, op_agent_name):  # 输入 红蓝双方各一架飞机名字，输出 角度威胁和速度威胁
+    def one_threat_index(self, ego_agent_name, op_agent_name):
         try:
-            ego_x, ego_y, ego_z = \
-                self.GPS_to_xyz(self.obs_dict['red'][ego_agent_name]['position/lat-geod-deg'],
-                                self.obs_dict['red'][ego_agent_name]['position/long-gc-deg'],
-                                self.obs_dict['red'][ego_agent_name]['position/h-sl-ft'])
 
-            op_x, op_y, op_z = \
-                self.GPS_to_xyz(self.obs_dict['blue'][op_agent_name]['position/lat-geod-deg'],
-                                self.obs_dict['blue'][op_agent_name]['position/long-gc-deg'],
-                                self.obs_dict['blue'][op_agent_name]['position/h-sl-ft'])
+            ego_x, ego_y, ego_z = self.GPS_to_xyz(self.obs_dict['red'][ego_agent_name]['position/lat-geod-deg'],
+                                               self.obs_dict['red'][ego_agent_name]['position/long-gc-deg'],
+                                               self.obs_dict['red'][ego_agent_name]['position/h-sl-ft'])
 
-            ego_ang_x, ego_ang_y, ego_ang_z = \
-                self.Euler_to_xyz(self.obs_dict['red'][ego_agent_name]['attitude/psi-deg'],
-                                  self.obs_dict['red'][ego_agent_name]['attitude/pitch-rad'],
-                                  self.obs_dict['red'][ego_agent_name]['attitude/roll-rad'])
+            op_x, op_y, op_z = self.GPS_to_xyz(self.obs_dict['blue'][op_agent_name]['position/lat-geod-deg'],
+                                            self.obs_dict['blue'][op_agent_name]['position/long-gc-deg'],
+                                            self.obs_dict['blue'][op_agent_name]['position/h-sl-ft'])
 
-            op_ang_x, op_ang_y, op_ang_z = \
-                self.Euler_to_xyz(self.obs_dict['blue'][op_agent_name]['attitude/psi-deg'],
-                                  self.obs_dict['blue'][op_agent_name]['attitude/pitch-rad'],
-                                  self.obs_dict['blue'][op_agent_name]['attitude/roll-rad'])
+            ego_x_ang, ego_y_ang, ego_z_ang = self.Euler_to_xyz(self.obs_dict['red'][ego_agent_name]['attitude/psi-deg'],
+                                                           self.obs_dict['red'][ego_agent_name]['attitude/pitch-rad'],
+                                                           self.obs_dict['red'][ego_agent_name]['attitude/roll-rad'])
 
-            pitch_reward = 0
+            op_x_ang, op_y_ang, op_z_ang = self.Euler_to_xyz(self.obs_dict['blue'][op_agent_name]['attitude/psi-deg'],
+                                                        self.obs_dict['blue'][op_agent_name]['attitude/pitch-rad'],
+                                                        self.obs_dict['blue'][op_agent_name]['attitude/roll-rad'])
 
-            # 距离威胁
-            f_param_AMRAAM_approach = self.calculation_tool([2000., 1.], [35000., 0.4], mode='function_parameters')
-            f_param_AMRAAM_avoid = self.calculation_tool([2000., 8.], [40000., 0.4], mode='function_parameters')
-            f_param_SRAAM_approach = self.calculation_tool([2000., 1.], [8000., 0.4], mode='function_parameters')
-            f_param_SRAAM_avoid = self.calculation_tool([2000., 8.], [10000., 0.4], mode='function_parameters')
-            # function_param mode : 'array_angle','function_parameters', 'distance_threat'
-            if self._episode_steps <= 1:
-            
-                # try , except 此处用于初始化self.red_weapon_state， 实际上该段代码应该在reset()函数实现
-                self.red_weapon_state[ego_agent_name]['SRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum']
-                self.red_weapon_state[ego_agent_name]['AMRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum']
-                self.red_weapon_state[ego_agent_name]['func_param'] = f_param_AMRAAM_approach
-                self.red_weapon_state[ego_agent_name]['threat_time_count'] = 0.
-                self.red_weapon_state[ego_agent_name]['th_mode'] = 0
-
-            if self.red_weapon_state[ego_agent_name]['AMRAAMCurrentNum'] != self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum']\
-                    and self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum'] != 0:
-                self.red_weapon_state[ego_agent_name]['AMRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum']
-                self.red_weapon_state[ego_agent_name]['threat_time_count'] = self._episode_steps
-                self.red_weapon_state[ego_agent_name]['th_mode'] = 1
-            elif self.red_weapon_state[ego_agent_name]['AMRAAMCurrentNum'] != self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum'] \
-                    and self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum'] == 0:
-                self.red_weapon_state[ego_agent_name]['AMRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum']
-                self.red_weapon_state[ego_agent_name]['threat_time_count'] = self._episode_steps
-                self.red_weapon_state[ego_agent_name]['th_mode'] = 2
-            elif self.red_weapon_state[ego_agent_name]['SRAAMCurrentNum'] != self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum'] \
-                    and self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum'] != 0:
-                self.red_weapon_state[ego_agent_name]['SRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum']
-                self.red_weapon_state[ego_agent_name]['threat_time_count'] = self._episode_steps
-                self.red_weapon_state[ego_agent_name]['th_mode'] = 3
-            elif self.red_weapon_state[ego_agent_name]['SRAAMCurrentNum'] != self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum'] \
-                    and self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum'] == 0:
-                self.red_weapon_state[ego_agent_name]['SRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum']
-                self.red_weapon_state[ego_agent_name]['threat_time_count'] = self._episode_steps
-                self.red_weapon_state[ego_agent_name]['th_mode'] = 4
-
-            time_count = self._episode_steps - self.red_weapon_state[ego_agent_name]['threat_time_count']
-            if 5 <= time_count < 10:
-                if self.red_weapon_state[ego_agent_name]['th_mode'] != 0:
-                    pitch = self.obs_dict['red'][ego_agent_name]['attitude/pitch-rad']
-                    pitch_reward +=  -np.sin(pitch)
-                if self.red_weapon_state[ego_agent_name]['th_mode'] == 1:
-                    self.red_weapon_state[ego_agent_name]['func_param'] = f_param_AMRAAM_avoid
-                elif self.red_weapon_state[ego_agent_name]['th_mode'] == 2:
-                    self.red_weapon_state[ego_agent_name]['func_param'] = f_param_AMRAAM_avoid
-                elif self.red_weapon_state[ego_agent_name]['th_mode'] == 3:
-                    self.red_weapon_state[ego_agent_name]['func_param'] = f_param_SRAAM_avoid
-                elif self.red_weapon_state[ego_agent_name]['th_mode'] == 4:
-                    self.red_weapon_state[ego_agent_name]['func_param'] = f_param_SRAAM_avoid
-            elif 10 <= time_count < 15:
-                if self.red_weapon_state[ego_agent_name]['th_mode'] == 1:
-                    param_beg = f_param_AMRAAM_avoid
-                    param_end = f_param_AMRAAM_approach
-                    self.red_weapon_state[ego_agent_name]['func_param'] = param_beg + (param_end - param_beg) * float(time_count - 9) / 5.
-                elif self.red_weapon_state[ego_agent_name]['th_mode'] == 2:
-                    param_beg = f_param_AMRAAM_avoid
-                    param_end = f_param_SRAAM_approach
-                    self.red_weapon_state[ego_agent_name]['func_param'] = param_beg + (param_end - param_beg) * float(time_count - 9) / 5.
-                elif self.red_weapon_state[ego_agent_name]['th_mode'] == 3:
-                    param_beg = f_param_SRAAM_avoid
-                    param_end = f_param_SRAAM_approach
-                    self.red_weapon_state[ego_agent_name]['func_param'] = param_beg + (param_end - param_beg) * float(time_count - 9) / 5.
-                elif self.red_weapon_state[ego_agent_name]['th_mode'] == 4:
-                    param_beg = f_param_SRAAM_avoid
-                    param_end = f_param_AMRAAM_avoid
-                    self.red_weapon_state[ego_agent_name]['func_param'] = param_beg + (param_end - param_beg) * float(time_count - 9) / 5.
-
+            # 距离威胁指数
+            dis_attack = 40000.
             dis_render = 60000.
-            dis_blind = 2000.
+            dis_blind = 5000.
             dis_air = np.linalg.norm([ego_x - op_x, ego_y - op_y, ego_z - op_z])
-
             if dis_air > dis_render:
-                th_dis = 1. - (100000. - dis_air)*(1 - 0.01)/(100000. - dis_render)
-            elif dis_air <= dis_render and dis_render >= dis_blind:
-                th_dis = self.calculation_tool(dis_air, self.red_weapon_state[ego_agent_name]['func_param'], mode='distance_threat')
+                th_dis = 0.01
+            elif dis_air <= dis_render and dis_render >= dis_attack:
+                th_dis = 0.01 + (dis_air - dis_render) * (0.4 - 0.01) / (dis_attack - dis_render)
+            elif dis_air <= dis_attack and dis_render >= dis_blind:
+                th_dis = 0.4 * dis_attack / dis_air
             else:
-                th_dis = 0.2
-            if '99' not in str(self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget']) and \
-                    (self.red_weapon_state[ego_agent_name]['th_mode'] == 0 or time_count >= 15 or time_count <= 5):
+                th_dis = 0.1
+            if '99' not in str(self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget']):
                 th_dis *= 0.4
 
-            # 角度威胁
-            ego_direction_vector = np.array([ego_ang_x, ego_ang_y, ego_ang_z])
-            op_direction_vector = np.array([op_ang_x, op_ang_y, op_ang_z])
-            position_direction_vector = np.array([op_x - ego_x, op_y - ego_y, op_z - ego_z])
+            # 角度威胁指数
+            ego_array = np.array([ego_x_ang, ego_y_ang, ego_z_ang])
+            pos_arrray = np.array([op_x - ego_x, op_y - ego_y, op_z - ego_z])
+            op_array = np.array([op_x_ang, op_y_ang, op_z_ang])
 
-            theta_angle = self.calculation_tool(ego_direction_vector, position_direction_vector, mode='array_angle')
-            phi_angle = self.calculation_tool(op_direction_vector, position_direction_vector, mode='array_angle')
-
-            weight_angle = 70000. / (dis_air + 100000.)  # 威胁角权重，当距离远时仅关注进攻角
-            th_ang = ((1 - weight_angle) * theta_angle + weight_angle * phi_angle) / 360.
+            theta_ang = self.array_angle(ego_array, pos_arrray)
+            phi_ang = self.array_angle(op_array, pos_arrray)
+            w_angle = 80000. / (dis_air + 100000.)  # 威胁角权重，当距离远时仅关注进攻角
+            th_ang = ((1 - w_angle) * theta_ang + w_angle * phi_ang) / 360.
         except KeyError:
             th_ang, th_dis = 0., 0.
-        return th_ang, th_dis, pitch_reward
-
-    def calculation_tool(self, x, y, mode='array_angle'):  # 计算工具
-        if mode == 'array_angle':  # 输入两向量， 计算两向量夹角
-            return np.arccos(x.dot(y) / (np.sqrt(x.dot(x)) * np.sqrt(y.dot(y)))) * 180. / np.pi
-        elif mode == 'function_parameters':  # 输入两个点，计算一个经过两点的光滑曲线
-            a = (x[0] * x[1] - y[0] * y[1]) / (y[1] - x[1])
-            b = x[1] * y[1] * (x[0] - y[0]) / (y[1] - x[1])
-            return np.array([a, b])
-        elif mode == 'distance_threat':  # 输入距离及参数， 计算距离威胁度
-            return y[1] / (y[0] + x)
-        else:
-            print('Error in calculation_tool !! ')
-            return None
+        return th_ang, th_dis
 
     def array_angle(self, x, y):  # 计算两向量夹角
         return np.arccos(x.dot(y) / (np.sqrt(x.dot(x)) * np.sqrt(y.dot(y)))) * 180. / np.pi
+
+    def into_view(self, attribute):
+        print(f"attribute: {attribute}")
+        fly_ids = np.zeros((5), dtype=np.float32)
+        index = int(attribute)
+        st = 0
+        while index:
+            fly = index % 10
+            index = index // 10
+            fly_ids[st] = fly
+            st += 1
+
+        return fly_ids
 
     def GPS_to_xyz(self, lat, lon, height):
         # 输入经纬度、海拔（ft）
