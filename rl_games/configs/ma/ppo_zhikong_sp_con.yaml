@@ -61,7 +61,7 @@ params:
     clip_value: True
     clip_actions: True
     num_actors: 2
-    horizon_length: 500
+    horizon_length: 800
     minibatch_size: 500
     mini_epochs: 2
     critic_coef: 1
