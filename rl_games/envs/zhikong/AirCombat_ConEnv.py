@@ -134,9 +134,9 @@ class AirCombatConEnv(object):
                                 shape=(3,))
 
         if self.red_agents_num == 1:
-            shape = 126
+            shape = 127
         elif self.red_agents_num == 5:
-            shape = 494
+            shape = 499
         self.observation_spaces = [
             Box(low=np.float32(-np.inf), high=np.float32(np.inf),
                 shape=(shape, ), dtype=np.float32) for _ in range(self.n_agents)]

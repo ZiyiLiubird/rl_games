@@ -61,7 +61,7 @@ params:
     clip_value: True
     clip_actions: True
     num_actors: 2
-    horizon_length: 800
+    horizon_length: 500
     minibatch_size: 500
     mini_epochs: 2
     critic_coef: 1
@@ -83,9 +83,9 @@ params:
       excute_path: '/home/lzy/lzy/human-ai/Air/10-13/Linux/Mono/Linux/ZK.x86_64'
       playmode: 1
       setting: 0
-      num_agents: 10
-      red_agents_num: 5
-      blue_agents_num: 5
+      num_agents: 2 #10
+      red_agents_num: 1 #5
+      blue_agents_num: 1 #5
       action_space_type: Continuous
       ctrl_mode: 0
       apply_agent_ids: True
