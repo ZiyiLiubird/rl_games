@@ -134,9 +134,9 @@ class AirCombatConEnv(object):
                                 shape=(3,))
 
         if self.red_agents_num == 1:
-            shape = 124
+            shape = 126
         elif self.red_agents_num == 5:
-            shape = 484
+            shape = 494
         self.observation_spaces = [
             Box(low=np.float32(-np.inf), high=np.float32(np.inf),
                 shape=(shape, ), dtype=np.float32) for _ in range(self.n_agents)]
@@ -399,7 +399,7 @@ class AirCombatConEnv(object):
 
         enemy_agents = self.camp_2_agents[camp]
         enemy_agents_num = self.camp_2_agents_num[camp]
-        enemy_infos = np.zeros((enemy_agents_num, 46), dtype=np.float32)
+        enemy_infos = np.zeros((enemy_agents_num, 48), dtype=np.float32)
 
         for i, name in enumerate(enemy_agents):
             if int(self.obs_dict[camp][name]['DeathEvent']) != 99:
@@ -426,41 +426,44 @@ class AirCombatConEnv(object):
             relative_y = enemy_y - ego_y
             relative_z = enemy_z - ego_z
             relative_dist = np.linalg.norm([relative_x, relative_y, relative_z])
-            
+
             enemy_infos[i, 4] = relative_x
             enemy_infos[i, 5] = relative_y
             enemy_infos[i, 6] = relative_z
             enemy_infos[i, 7] = relative_dist
             enemy_infos[i, 8] = theta_angle
             enemy_infos[i, 9] = phi_angle
+            enemy_infos[i, 10] = enemy_ang_x
+            enemy_infos[i, 11] = enemy_ang_y
+            enemy_infos[i, 12] = enemy_ang_z
 
-            enemy_infos[i, 10] = self.obs_dict[camp][name]['attitude/psi-deg']
-            enemy_infos[i, 11] = self.obs_dict[camp][name]['velocities/ve-fps']
-            enemy_infos[i, 12] = self.obs_dict[camp][name]['velocities/h-dot-fps']
-            enemy_infos[i, 13] = self.obs_dict[camp][name]['velocities/v-north-fps']
-            enemy_infos[i, 14] = self.obs_dict[camp][name]['velocities/v-east-fps']
-            enemy_infos[i, 15] = self.obs_dict[camp][name]['velocities/v-down-fps']
+            enemy_infos[i, 13] = self.obs_dict[camp][name]['attitude/psi-deg']
+            enemy_infos[i, 14] = self.obs_dict[camp][name]['velocities/ve-fps']
+            enemy_infos[i, 15] = self.obs_dict[camp][name]['velocities/h-dot-fps']
+            enemy_infos[i, 16] = self.obs_dict[camp][name]['velocities/v-north-fps']
+            enemy_infos[i, 17] = self.obs_dict[camp][name]['velocities/v-east-fps']
+            enemy_infos[i, 18] = self.obs_dict[camp][name]['velocities/v-down-fps']
 
-            enemy_infos[i, 16] = self.obs_dict[camp][name]['SRAAMCurrentNum']
-            enemy_infos[i, 17] = self.obs_dict[camp][name]['AMRAAMCurrentNum']
-            enemy_infos[i, 18] = self.obs_dict[camp][name]['BulletCurrentNum']
-            enemy_infos[i, 19+int(self.obs_dict[camp][name]['IfPresenceHitting'])] = 1
+            enemy_infos[i, 19] = self.obs_dict[camp][name]['SRAAMCurrentNum']
+            enemy_infos[i, 20] = self.obs_dict[camp][name]['AMRAAMCurrentNum']
+            enemy_infos[i, 21] = self.obs_dict[camp][name]['BulletCurrentNum']
+            enemy_infos[i, 22+int(self.obs_dict[camp][name]['IfPresenceHitting'])] = 1
 
             if int(self.obs_dict[camp][name]['TargetIntoView']) != 0:
                 fly_ids = self.into_view(self.obs_dict[camp][name]['TargetIntoView'])
-                enemy_infos[i, 21:26] = fly_ids
+                enemy_infos[i, 24:29] = fly_ids
             if int(self.obs_dict[camp][name]['AllyIntoView']) != 0:
                 fly_ids = self.into_view(self.obs_dict[camp][name]['AllyIntoView'])
-                enemy_infos[i, 26:31] = fly_ids
+                enemy_infos[i, 29:34] = fly_ids
             if int(self.obs_dict[camp][name]['TargetEnterAttackRange']) != 0:
                 fly_ids = self.into_view(self.obs_dict[camp][name]['TargetEnterAttackRange'])
-                enemy_infos[i, 31:36] = fly_ids
+                enemy_infos[i, 34:39] = fly_ids
             if int(self.obs_dict[camp][name]['SRAAMTargetLocked']) != 9:
                 fly_ids = int(self.obs_dict[camp][name]['SRAAMTargetLocked'])
-                enemy_infos[i, 36+fly_ids] = 1
+                enemy_infos[i, 39+fly_ids] = 1
             if int(self.obs_dict[camp][name]['AMRAAMlockedTarget']) != 9999:
                 fly_list = self.lockedtarget(self.obs_dict[camp][name]['AMRAAMlockedTarget'])
-                enemy_infos[i, 41+fly_list] = 1
+                enemy_infos[i, 44+fly_list] = 1
 
         return enemy_infos.flatten()
 
