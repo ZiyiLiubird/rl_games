@@ -335,7 +335,10 @@ class AirCombatConEnv(object):
                     reward += self.reward_defeat
                 self.record = True
                 infos['lose'] = np.ones((self.red_agents_num), dtype=np.float32)
-        elif self._episode_steps >= self.episode_limit:
+            elif self.red_all_dead and self.blue_all_dead:
+                infos['draw'] = np.ones((self.red_agents_num), dtype=np.float32)
+                self.record = True
+        elif self._episode_steps >= self.episode_limit and not self.record:
                 infos['draw'] = np.ones((self.red_agents_num), dtype=np.float32)
                 self.record = True
         else:
