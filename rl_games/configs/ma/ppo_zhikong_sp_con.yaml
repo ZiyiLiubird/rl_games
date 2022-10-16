@@ -42,7 +42,7 @@ params:
     op_load_path: False
     update_win_rate: 0.8
     games_to_check: 10
-    score_to_win: 30
+    score_to_win: 200
     max_epochs: 1000000
     bounds_loss_coef: 10
     max_update_steps: 5000
@@ -83,9 +83,9 @@ params:
       excute_path: '/home/lzy/lzy/human-ai/Air/10-13/Linux/Mono/Linux/ZK.x86_64'
       playmode: 1
       setting: 0
-      num_agents: 2 #10
-      red_agents_num: 1 #5
-      blue_agents_num: 1 #5
+      num_agents: 10
+      red_agents_num: 5
+      blue_agents_num: 5
       action_space_type: Continuous
       ctrl_mode: 0
       apply_agent_ids: True
@@ -100,7 +100,7 @@ params:
       role_reward_param_file: null
       save_frequency: 500
       single_agent_mode: False
-      min_height: 10000
+      min_height: 14000
       reward_win: 200
       reward_sparse: False
       reward_only_positive: False
@@ -124,5 +124,5 @@ params:
     determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/5v5/10-16/last_zhikong_con_ep_60_rew_0.7508774.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/5v5/10-16/last_zhikong_con_ep_50_rew_4.3154693.pth'
     # '/home/lzy/lzy/MARL/self-play/models/10-13/last_zhikong_con_ep_9210_rew_58.616863.pth'

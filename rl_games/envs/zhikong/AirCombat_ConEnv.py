@@ -402,7 +402,7 @@ class AirCombatConEnv(object):
 
         enemy_agents = self.camp_2_agents[camp]
         enemy_agents_num = self.camp_2_agents_num[camp]
-        enemy_infos = np.zeros((enemy_agents_num, 48), dtype=np.float32)
+        enemy_infos = np.zeros((enemy_agents_num, 49), dtype=np.float32)
 
         for i, name in enumerate(enemy_agents):
             if int(self.obs_dict[camp][name]['DeathEvent']) != 99:
