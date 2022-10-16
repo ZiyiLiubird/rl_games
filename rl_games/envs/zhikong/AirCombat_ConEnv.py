@@ -181,6 +181,9 @@ class AirCombatConEnv(object):
 
         return obs_dict
 
+    def weapon_actions_(self, ego_actions, camp='red'):
+        return ego_actions
+
     def weapon_actions(self, ego_actions, camp='red'):
         """
         switch missile and weapon launch
@@ -282,8 +285,11 @@ class AirCombatConEnv(object):
         ego_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
         op_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
 
-        ego_weapon_actions = self.weapon_actions(ego_weapon_actions, camp='red')
-        op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
+        # ego_weapon_actions = self.weapon_actions(ego_weapon_actions, camp='red')
+        # op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
+
+        ego_weapon_actions = self.weapon_actions_(ego_weapon_actions, camp='red')
+        op_weapon_actions = self.weapon_actions_(op_weapon_actions, camp='blue')
 
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
@@ -801,15 +807,15 @@ class AirCombatConEnv(object):
         for al_id, ego_agent_name in enumerate(self.red_agents):
             if int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
                 continue
-            if int(self.obs_dict['red'][ego_agent_name]['SRAAMTargetLocked']) != 99 or \
-                int(self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget']) != 99:
+            if int(self.obs_dict['red'][ego_agent_name]['SRAAMTargetLocked']) != 9 or \
+                int(self.obs_dict['red'][ego_agent_name]['AMRAAMlockedTarget']) != 9999:
                     locked_advantage[al_id] = 1
 
         for e_id, op_agent_name in enumerate(self.blue_agents):
             if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
                 continue
-            if int(self.obs_dict['blue'][op_agent_name]['SRAAMTargetLocked']) != 99 or \
-                int(self.obs_dict['blue'][op_agent_name]['AMRAAMlockedTarget']) != 99:
+            if int(self.obs_dict['blue'][op_agent_name]['SRAAMTargetLocked']) != 9 or \
+                int(self.obs_dict['blue'][op_agent_name]['AMRAAMlockedTarget']) != 9999:
                     be_locked_advantage[e_id] = 1
         
         return locked_advantage, be_locked_advantage

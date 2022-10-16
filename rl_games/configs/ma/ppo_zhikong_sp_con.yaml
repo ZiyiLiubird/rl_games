@@ -22,7 +22,7 @@ params:
         fixed_sigma: True
 
     mlp:
-      units: [512, 512, 128]
+      units: [1024, 1024, 512] #[512, 512, 128] # [1024, 1024, 512]
       activation: elu # relu
       initializer:
         name: 'orthogonal_initializer'
@@ -124,4 +124,5 @@ params:
     determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/10-13/last_zhikong_con_ep_9210_rew_58.616863.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/5v5/10-16/last_zhikong_con_ep_40_rew_66.19695.pth'
+    # '/home/lzy/lzy/MARL/self-play/models/10-13/last_zhikong_con_ep_9210_rew_58.616863.pth'
