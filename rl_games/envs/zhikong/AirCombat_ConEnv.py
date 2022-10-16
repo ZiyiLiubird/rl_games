@@ -116,8 +116,8 @@ class AirCombatConEnv(object):
                     zip(self.blue_agents, list(range(self.blue_agents_num))))
 
         # setup dict_init
-        self.dict_init = init_info(self.n_agents // 2, reset=False, seed=self.setting)
-        self.dict_reset = init_info(self.n_agents//2, seed=self.setting)
+        self.dict_init = init_info(self.n_agents // 2, reset=False)
+        self.dict_reset = init_info(self.n_agents//2)
 
         # define action and observation spaces
         # (aileron)：9
@@ -167,15 +167,14 @@ class AirCombatConEnv(object):
         self.red_weapon_state = dict()
         for ego_agent_name in self.red_agents:
             self.red_weapon_state[ego_agent_name] = {}
+        setting = np.random.randint(0, 3)
         if init:
             # print(self.dict_init)
-            self.obs_dict = self.env.reset(self.dict_init)
+            self.obs_dict = self.env.reset(self.dict_init[setting])
             self.prev_obs_dict = None
         else:
-            # print(self.dict_reset)
-            self.obs_dict = self.env.reset(self.dict_reset)
+            self.obs_dict = self.env.reset(self.dict_reset[setting])
             self.prev_obs_dict = None
-        # print(f"env reset success !")
         obs, obs_op = self.get_obs()
         obs_dict = {}
         obs_dict['obs'], obs_dict['obs_op'] =obs, obs_op
@@ -206,11 +205,13 @@ class AirCombatConEnv(object):
             armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
             bullet_nums = self.prev_obs_dict[camp][agent_name]['BulletCurrentNum']
             aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
-            sr_locked = self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']
-            ar_locked = self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']
+            sr_locked = int(self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked'])
+            ar_locked = int(self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget'])
             if len(goals) == 1:
                 item = goals.item()
                 enemy = 'blue_'+str(item) if camp_another == 'blue' else 'red_'+str(item)
+                if self.prev_obs_dict[camp_another][enemy]['DeathEvent'] != 99:
+                    continue
                 enemy_x, enemy_y,enemy_z = self.GPS_to_xyz(
                     self.prev_obs_dict[camp_another][enemy]['position/lat-geod-deg'],
                     self.prev_obs_dict[camp_another][enemy]['position/long-gc-deg'],
@@ -224,18 +225,21 @@ class AirCombatConEnv(object):
                         continue
                 elif dist <= 12000:
                     if aim_mode == 0:
-                        if srmissile_nums != 0 and sr_locked != 9:
-                            ego_actions[al_id][1] = 1
-                        else:
-                            continue
+                        if srmissile_nums != 0:
+                            if sr_locked != 9:
+                                ego_actions[al_id][1] = 1
+                        elif armissile_nums != 0:
+                            ego_actions[al_id][0] = 1
                     else:
-                        ego_actions[al_id][0] = 1
+                        if srmissile_nums == 0:
+                            if armissile_nums != 0 and ar_locked != 9999:
+                                ego_actions[al_id][1] = 1
+                        else:
+                            ego_actions[al_id][0] = 1
                 else:
                     if aim_mode == 1:
                         if armissile_nums != 0 and ar_locked != 9999:
                             ego_actions[al_id][1] = 1
-                        else:
-                            continue
                     else:
                         ego_actions[al_id][0] = 1
 
@@ -246,14 +250,21 @@ class AirCombatConEnv(object):
                     if armissile_nums > 0:
                         ego_actions[al_id][0] = 1
                     elif srmissile_nums > 0:
-                        if sr_locked:
-                            ego_actions[al_id][1] = 1
+                        if sr_locked != 9:
+                            enemy = 'blue_'+str(sr_locked) if camp_another == 'blue' else 'red_'+str(sr_locked)
+                            if self.prev_obs_dict[camp_another][enemy]['DeathEvent'] != 99:
+                                continue
+                            enemy_x, enemy_y,enemy_z = self.GPS_to_xyz(
+                                self.prev_obs_dict[camp_another][enemy]['position/lat-geod-deg'],
+                                self.prev_obs_dict[camp_another][enemy]['position/long-gc-deg'],
+                                self.prev_obs_dict[camp_another][enemy]['position/h-sl-ft'])
+                            dist = np.linalg.norm(np.array([enemy_x-ego_x, enemy_y-ego_y, enemy_z-ego_z]))
+                            if dist <= 12000:
+                                ego_actions[al_id][1] = 1
                 elif aim_mode == 1:
                     if armissile_nums > 0:
-                        if ar_locked:
+                        if ar_locked != 9999:
                             ego_actions[al_id][1] = 1
-                        else:
-                            continue
                     elif srmissile_nums > 0:
                         ego_actions[al_id][0] = 1
 

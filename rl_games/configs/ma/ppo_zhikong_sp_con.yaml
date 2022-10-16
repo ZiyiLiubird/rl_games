@@ -60,7 +60,7 @@ params:
     e_clip: 0.2
     clip_value: True
     clip_actions: True
-    num_actors: 4
+    num_actors: 2
     horizon_length: 500
     minibatch_size: 500
     mini_epochs: 2
@@ -80,12 +80,12 @@ params:
       ip: '127.0.1.1'
       worker_index: 888
       config_path: 'rl_games/configs/ma/ppo_zhikong_sp_con.yaml'
-      excute_path: '/home/lzy/lzy/human-ai/Air/10-13/Linux/Mono/NoLinux/ZK.x86_64'
-      playmode: 0
+      excute_path: '/home/lzy/lzy/human-ai/Air/10-13/Linux/Mono/Linux/ZK.x86_64'
+      playmode: 1
       setting: 0
-      num_agents: 2
-      red_agents_num: 1
-      blue_agents_num: 1
+      num_agents: 10
+      red_agents_num: 5
+      blue_agents_num: 5
       action_space_type: Continuous
       ctrl_mode: 0
       apply_agent_ids: True
