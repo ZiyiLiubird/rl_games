@@ -83,9 +83,9 @@ params:
       excute_path: '/home/lzy/lzy/human-ai/Air/10-13/Linux/Mono/Linux/ZK.x86_64'
       playmode: 1
       setting: 0
-      num_agents: 2 #10
-      red_agents_num: 1 #5
-      blue_agents_num: 1 #5
+      num_agents: 10
+      red_agents_num: 5
+      blue_agents_num: 5
       action_space_type: Continuous
       ctrl_mode: 0
       apply_agent_ids: True
@@ -124,5 +124,5 @@ params:
     determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/5v5/10-16/last_zhikong_con_ep_50_rew_4.3154693.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/5v5/10-17/last_zhikong_con_ep_10_rew_215.14128.pth'
     # '/home/lzy/lzy/MARL/self-play/models/10-13/last_zhikong_con_ep_9210_rew_58.616863.pth'

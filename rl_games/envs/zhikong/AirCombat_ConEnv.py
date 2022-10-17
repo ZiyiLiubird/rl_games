@@ -285,11 +285,11 @@ class AirCombatConEnv(object):
         ego_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
         op_weapon_actions = np.zeros((self.red_agents_num, 2), dtype=int)
 
-        # ego_weapon_actions = self.weapon_actions(ego_weapon_actions, camp='red')
-        # op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
+        ego_weapon_actions = self.weapon_actions(ego_weapon_actions, camp='red')
+        op_weapon_actions = self.weapon_actions(op_weapon_actions, camp='blue')
 
-        ego_weapon_actions = self.weapon_actions_(ego_weapon_actions, camp='red')
-        op_weapon_actions = self.weapon_actions_(op_weapon_actions, camp='blue')
+        # ego_weapon_actions = self.weapon_actions_(ego_weapon_actions, camp='red')
+        # op_weapon_actions = self.weapon_actions_(op_weapon_actions, camp='blue')
 
         infos = {}
         dones = np.zeros(self.num_agents, dtype=bool)
@@ -813,27 +813,11 @@ class AirCombatConEnv(object):
                 current_health = self.obs_dict['red'][ego_agent_name]['LifeCurrent']
                 if int(current_health) == 0 or int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
                     self.red_death[al_id] = 1
-                    if not self.reward_only_positive:
-                        delta_deaths -= self.reward_death_value * neg_scale
                     delta_ally += neg_scale * prev_health
                 else:
                     delta_ally += neg_scale * (prev_health - current_health)
 
-        for e_id, op_agent_name in enumerate(self.blue_agents):
-            if not self.blue_death[e_id]:
-                prev_health = self.prev_obs_dict['blue'][op_agent_name]['LifeCurrent']
-                current_health = self.obs_dict['blue'][op_agent_name]['LifeCurrent']
-                if int(current_health) == 0 or int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) != 99:
-                    self.blue_death[e_id] = 1
-                    if int(self.obs_dict['blue'][op_agent_name]['DeathEvent']) == 0:
-                        delta_deaths += self.reward_death_value
-                    else:
-                        delta_deaths += 2 * self.reward_death_value
-                    delta_enemy += prev_health
-                else:
-                    delta_enemy += prev_health - current_health
-
-        reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
+        reward = - delta_ally + locked - (height + area) * neg_scale
         return reward
 
     def area_reward(self):
