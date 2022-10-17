@@ -90,7 +90,8 @@ class AirCombatConEnv(object):
         self.reward_defeat = kwargs.get("reward_defeat", -1)
         self.reward_only_positive = kwargs.get("reward_only_positive", False)
         self.max_reward = (self.reward_win + 2 * self.reward_death_value * self.blue_agents_num
-                           + 200*self.blue_agents_num)
+                           + 200*self.blue_agents_num+self.blue_agents_num+
+                           self.red_agents_num*self.blue_agents_num*5)
 
         # death tracking
         self.red_death = np.zeros((self.red_agents_num), dtype=int)
