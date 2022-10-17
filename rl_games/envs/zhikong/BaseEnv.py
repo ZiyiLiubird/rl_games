@@ -131,6 +131,9 @@ class BaseEnv(object):
     def reset(self):
         raise NotImplementedError
     
+    def weapon_actions_(self, ego_actions, camp='red'):
+        return ego_actions
+
     def weapon_actions(self, ego_actions, camp='red'):
         """
         switch missile and weapon launch
@@ -142,45 +145,82 @@ class BaseEnv(object):
         for al_id, agent_name in enumerate(agents):
             if int(self.prev_obs_dict[camp][agent_name]['DeathEvent']) != 99:
                 continue
+            if int(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange']) == 0:
+                continue
+            fly_ids = self.into_view(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange'])
+            goals = fly_ids.nonzero()[0]
+            if len(goals) == 0:
+                continue
+            ego_x, ego_y, ego_z = self.GPS_to_xyz(self.prev_obs_dict[camp][agent_name]['position/lat-geod-deg'],
+                                                  self.prev_obs_dict[camp][agent_name]['position/long-gc-deg'],
+                                                  self.prev_obs_dict[camp][agent_name]['position/h-sl-ft'])
             srmissile_nums = self.prev_obs_dict[camp][agent_name]['SRAAMCurrentNum']
             armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
+            bullet_nums = self.prev_obs_dict[camp][agent_name]['BulletCurrentNum']
             aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
+            sr_locked = int(self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked'])
+            ar_locked = int(self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget'])
+            if len(goals) == 1:
+                item = goals.item()
+                enemy = 'blue_'+str(item) if camp_another == 'blue' else 'red_'+str(item)
+                if self.prev_obs_dict[camp_another][enemy]['DeathEvent'] != 99:
+                    continue
+                enemy_x, enemy_y,enemy_z = self.GPS_to_xyz(
+                    self.prev_obs_dict[camp_another][enemy]['position/lat-geod-deg'],
+                    self.prev_obs_dict[camp_another][enemy]['position/long-gc-deg'],
+                    self.prev_obs_dict[camp_another][enemy]['position/h-sl-ft'])
+                dist = np.linalg.norm(np.array([enemy_x-ego_x, enemy_y-ego_y, enemy_z-ego_z]))
 
-            dis_min = np.min(
-                [np.linalg.norm(np.array([self.GPS_to_xyz(self.obs_dict[camp][agent_name]['position/lat-geod-deg'],
-                                                          self.obs_dict[camp][agent_name]['position/long-gc-deg'],
-                                                          self.obs_dict[camp][agent_name]['position/h-sl-ft'])]) -
-                                np.array([self.GPS_to_xyz(
-                                    self.obs_dict[camp_another][agent_another]['position/lat-geod-deg'],
-                                    self.obs_dict[camp_another][agent_another]['position/long-gc-deg'],
-                                    self.obs_dict[camp_another][agent_another]['position/h-sl-ft'])]))
-                 for agent_another in self.camp_2_agents[camp_another]])
+                if dist < 2000:
+                    if bullet_nums > 0:
+                     ego_actions[al_id][1] = 2
+                    else:
+                        continue
+                elif dist <= 12000:
+                    if aim_mode == 0:
+                        if srmissile_nums != 0:
+                            if sr_locked != 9:
+                                ego_actions[al_id][1] = 1
+                        elif armissile_nums != 0:
+                            ego_actions[al_id][0] = 1
+                    else:
+                        if srmissile_nums == 0:
+                            if armissile_nums != 0 and ar_locked != 9999:
+                                ego_actions[al_id][1] = 1
+                        else:
+                            ego_actions[al_id][0] = 1
+                else:
+                    if aim_mode == 1:
+                        if armissile_nums != 0 and ar_locked != 9999:
+                            ego_actions[al_id][1] = 1
+                    else:
+                        ego_actions[al_id][0] = 1
 
-            # ego_actions[al_id][-1] : 切换->1    不切换->0                   aim_mode: 0--srmissile   1--armissile
-            if dis_min >= 10000. and armissile_nums != 0:
-                ego_actions[al_id][0] = 1 if aim_mode == 0 else 0
-            elif dis_min >= 10000. and armissile_nums == 0:
-                ego_actions[al_id][0] = 1 if aim_mode == 1 else 0
-            elif dis_min < 10000. and srmissile_nums != 0:
-                ego_actions[al_id][0] = 1 if aim_mode == 1 else 0
-            elif dis_min < 10000. and srmissile_nums == 0:
-                ego_actions[al_id][0] = 1 if aim_mode == 0 else 0
-            else:
-                ego_actions[al_id][0] = 0
+            else: # goals > 1
+                # if int(sr_locked) == 9 and int(ar_locked) == 9999:
+                #     continue
+                if aim_mode == 0:
+                    if armissile_nums > 0:
+                        ego_actions[al_id][0] = 1
+                    elif srmissile_nums > 0:
+                        if sr_locked != 9:
+                            enemy = 'blue_'+str(sr_locked) if camp_another == 'blue' else 'red_'+str(sr_locked)
+                            if self.prev_obs_dict[camp_another][enemy]['DeathEvent'] != 99:
+                                continue
+                            enemy_x, enemy_y,enemy_z = self.GPS_to_xyz(
+                                self.prev_obs_dict[camp_another][enemy]['position/lat-geod-deg'],
+                                self.prev_obs_dict[camp_another][enemy]['position/long-gc-deg'],
+                                self.prev_obs_dict[camp_another][enemy]['position/h-sl-ft'])
+                            dist = np.linalg.norm(np.array([enemy_x-ego_x, enemy_y-ego_y, enemy_z-ego_z]))
+                            if dist <= 12000:
+                                ego_actions[al_id][1] = 1
+                elif aim_mode == 1:
+                    if armissile_nums > 0:
+                        if ar_locked != 9999:
+                            ego_actions[al_id][1] = 1
+                    elif srmissile_nums > 0:
+                        ego_actions[al_id][0] = 1
 
-            # ego_actions[al_id][-2]  :  不发射-> 0    发射导弹->1    发射子弹->2
-            # 如果视野内存在敌机且距离小于2km，则开启机枪
-            if '99' not in str(self.prev_obs_dict[camp][agent_name]['TargetIntoView']) and \
-                dis_min < 2000 and int(srmissile_nums) == 0:
-                ego_actions[al_id][1] = 2
-            # 如果远程导弹锁定敌方时，且距离在10-40km内，则发射
-            elif '99' not in str(self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget']) and \
-                10000. <= dis_min < 40000.:
-                ego_actions[al_id][1] = 1
-            # 如果近程导弹锁定敌方时，且距离小于10km，则发射
-            elif '99' not in str(self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked']) and \
-                dis_min < 10000.:
-                ego_actions[al_id][1] = 1
         return ego_actions
 
     def step(self, action):

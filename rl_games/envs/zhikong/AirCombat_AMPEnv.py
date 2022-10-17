@@ -1,11 +1,11 @@
 import torch
 import numpy as np
 from gym import spaces
-from rl_games.envs.zhikong import AirCombat_ConEnv
+from rl_games.envs.zhikong import BaseEnv
 from rl_games.utils.motion_lib import MotionLib
 
 
-class AirCombatAMPEnv(AirCombat_ConEnv.AirCombatConEnv):
+class AirCombatAMPEnv(BaseEnv.BaseEnv):
     def __init__(self, **kwargs):
 
 

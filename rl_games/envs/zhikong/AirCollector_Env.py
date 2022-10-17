@@ -135,12 +135,12 @@ class AirCollectEnv(object):
         self.red_death_missile = np.zeros((self.red_agents_num), dtype=int)
         self.blue_death = np.zeros((self.blue_agents_num), dtype=int)
         self.blue_death_missile = np.zeros((self.blue_agents_num), dtype=int)
-
+        setting = np.random.randint(0, 2)
         self._episode_steps = 0
         if init:
-            self.obs_dict = self.env.reset(self.dict_init)
+            self.obs_dict = self.env.reset(self.dict_init[setting])
         else:
-            self.obs_dict = self.env.reset(self.dict_reset)
+            self.obs_dict = self.env.reset(self.dict_reset[setting])
         print(f"env reset success !")
 
         return self.obs_dict
@@ -175,6 +175,95 @@ class AirCollectEnv(object):
         return self.obs_dict, actions_human, dones        
 
     def weapon_actions(self, ego_actions, camp='red'):
+        """
+        switch missile and weapon launch
+        """
+        camp_another = 'blue' if camp == 'red' else 'red'
+
+        agents = self.camp_2_agents[camp]
+        # srmissile_nums = np.zeros((self.red_agents_num, 1), dtype=np.float32)
+        for al_id, agent_name in enumerate(agents):
+            if int(self.prev_obs_dict[camp][agent_name]['DeathEvent']) != 99:
+                continue
+            if int(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange']) == 0:
+                continue
+            fly_ids = self.into_view(self.prev_obs_dict[camp][agent_name]['TargetEnterAttackRange'])
+            goals = fly_ids.nonzero()[0]
+            if len(goals) == 0:
+                continue
+            ego_x, ego_y, ego_z = self.GPS_to_xyz(self.prev_obs_dict[camp][agent_name]['position/lat-geod-deg'],
+                                                  self.prev_obs_dict[camp][agent_name]['position/long-gc-deg'],
+                                                  self.prev_obs_dict[camp][agent_name]['position/h-sl-ft'])
+            srmissile_nums = self.prev_obs_dict[camp][agent_name]['SRAAMCurrentNum']
+            armissile_nums = self.prev_obs_dict[camp][agent_name]['AMRAAMCurrentNum']
+            bullet_nums = self.prev_obs_dict[camp][agent_name]['BulletCurrentNum']
+            aim_mode = self.prev_obs_dict[camp][agent_name]['AimMode']
+            sr_locked = int(self.prev_obs_dict[camp][agent_name]['SRAAMTargetLocked'])
+            ar_locked = int(self.prev_obs_dict[camp][agent_name]['AMRAAMlockedTarget'])
+            if len(goals) == 1:
+                item = goals.item()
+                enemy = 'blue_'+str(item) if camp_another == 'blue' else 'red_'+str(item)
+                if self.prev_obs_dict[camp_another][enemy]['DeathEvent'] != 99:
+                    continue
+                enemy_x, enemy_y,enemy_z = self.GPS_to_xyz(
+                    self.prev_obs_dict[camp_another][enemy]['position/lat-geod-deg'],
+                    self.prev_obs_dict[camp_another][enemy]['position/long-gc-deg'],
+                    self.prev_obs_dict[camp_another][enemy]['position/h-sl-ft'])
+                dist = np.linalg.norm(np.array([enemy_x-ego_x, enemy_y-ego_y, enemy_z-ego_z]))
+
+                if dist < 2000:
+                    if bullet_nums > 0:
+                     ego_actions[al_id][1] = 2
+                    else:
+                        continue
+                elif dist <= 12000:
+                    if aim_mode == 0:
+                        if srmissile_nums != 0:
+                            if sr_locked != 9:
+                                ego_actions[al_id][1] = 1
+                        elif armissile_nums != 0:
+                            ego_actions[al_id][0] = 1
+                    else:
+                        if srmissile_nums == 0:
+                            if armissile_nums != 0 and ar_locked != 9999:
+                                ego_actions[al_id][1] = 1
+                        else:
+                            ego_actions[al_id][0] = 1
+                else:
+                    if aim_mode == 1:
+                        if armissile_nums != 0 and ar_locked != 9999:
+                            ego_actions[al_id][1] = 1
+                    else:
+                        ego_actions[al_id][0] = 1
+
+            else: # goals > 1
+                # if int(sr_locked) == 9 and int(ar_locked) == 9999:
+                #     continue
+                if aim_mode == 0:
+                    if armissile_nums > 0:
+                        ego_actions[al_id][0] = 1
+                    elif srmissile_nums > 0:
+                        if sr_locked != 9:
+                            enemy = 'blue_'+str(sr_locked) if camp_another == 'blue' else 'red_'+str(sr_locked)
+                            if self.prev_obs_dict[camp_another][enemy]['DeathEvent'] != 99:
+                                continue
+                            enemy_x, enemy_y,enemy_z = self.GPS_to_xyz(
+                                self.prev_obs_dict[camp_another][enemy]['position/lat-geod-deg'],
+                                self.prev_obs_dict[camp_another][enemy]['position/long-gc-deg'],
+                                self.prev_obs_dict[camp_another][enemy]['position/h-sl-ft'])
+                            dist = np.linalg.norm(np.array([enemy_x-ego_x, enemy_y-ego_y, enemy_z-ego_z]))
+                            if dist <= 12000:
+                                ego_actions[al_id][1] = 1
+                elif aim_mode == 1:
+                    if armissile_nums > 0:
+                        if ar_locked != 9999:
+                            ego_actions[al_id][1] = 1
+                    elif srmissile_nums > 0:
+                        ego_actions[al_id][0] = 1
+
+        return ego_actions
+
+    def weapon_actions_(self, ego_actions, camp='red'):
         """
         switch missile and weapon launch
         """
@@ -301,4 +390,72 @@ class AirCollectEnv(object):
         if np.sum(self.blue_death_missile) == self.blue_agents_num:
             self.blue_all_dead_missile = True
 
-        return (self.red_all_dead and self.blue_all_dead) or self.red_death[0]
+        return self.red_death[0]
+
+    def GPS_to_xyz(self, lat, lon, height):
+        # 输入经纬度、海拔（ft）
+        # 输入参考系下坐标值XYZ (m) X:North Y:East Z:DOWN
+
+        # CONSTANTS_RADIUS_OF_EARTH = 6356752.  # 极半径
+        # CONSTANTS_RADIUS_OF_EARTH = 6378137.  # 赤道半径
+        CONSTANTS_RADIUS_OF_EARTH = 6371000.  # 平均半径
+
+        ft_to_m = 0.3048
+
+        # 可以预先定义参考点，否则取第一个测试点为参考点
+        try:
+            if not self.ref_lat:
+                self.ref_lat = lat
+        except AttributeError:
+            self.ref_lat = lat
+
+        try:
+            if not self.ref_lon:
+                self.ref_lon = lon
+        except AttributeError:
+            self.ref_lon = lon
+
+        lat_rad = math.radians(lat)
+        lon_rad = math.radians(lon)
+        ref_lat_rad = math.radians(self.ref_lat)
+        ref_lon_rad = math.radians(self.ref_lon)
+
+        sin_lat = math.sin(lat_rad)
+        cos_lat = math.cos(lat_rad)
+        ref_sin_lat = math.sin(ref_lat_rad)
+        ref_cos_lat = math.cos(ref_lat_rad)
+
+        cos_d_lon = math.cos(lon_rad - ref_lon_rad)
+
+        arg = np.clip(ref_sin_lat * sin_lat + ref_cos_lat * cos_lat * cos_d_lon, -1.0, 1.0)
+        c = math.acos(arg)
+
+        k = 1.0
+        if abs(c) > 0:
+            k = (c / math.sin(c))
+
+        x = float(k * (ref_cos_lat * sin_lat - ref_sin_lat * cos_lat * cos_d_lon) * CONSTANTS_RADIUS_OF_EARTH)
+        y = float(k * cos_lat * math.sin(lon_rad - ref_lon_rad) * CONSTANTS_RADIUS_OF_EARTH)
+        z = float(0. - ft_to_m * height)
+
+        return x, y, z
+
+    def Euler_to_xyz(self, yaw, pitch, roll):
+        # 注意输入顺序和单位  :  yaw-航向角-角度    pitch-俯仰角-弧度    roll-翻滚角-弧度
+        # 飞机朝向仅与偏航角、俯仰角有关 与翻滚角无关
+        x = np.cos(yaw * np.pi / 180.)
+        y = np.sin(yaw * np.pi / 180.)
+        z = -np.sin(pitch) + 0. * roll
+        return x, y, z
+
+    def into_view(self, attribute):
+        fly_ids = np.zeros((5), dtype=np.float32)
+        index = int(attribute)
+        st = 0
+        while index:
+            fly = index % 10
+            index = index // 10
+            fly_ids[st] = fly
+            st += 1
+
+        return fly_ids
