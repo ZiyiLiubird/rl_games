@@ -42,7 +42,7 @@ params:
     op_load_path: False
     update_win_rate: 0.8
     games_to_check: 10
-    score_to_win: 200
+    score_to_win: 2000
     max_epochs: 1000000
     bounds_loss_coef: 10
     max_update_steps: 5000

@@ -375,8 +375,8 @@ class AirCombatConEnv(object):
         ego_obs_dict = self.obs_dict['red']
         op_obs_dict = self.obs_dict['blue']
 
-        obs = np.zeros((self.red_agents_num, self.observation_space.shape[0]), dtype=np.float32)
-        obs_op = np.zeros((self.blue_agents_num, self.observation_space.shape[0]), dtype=np.float32)
+        obs = np.zeros((self.red_agents_num, self.observation_space.shape[0] - 5), dtype=np.float32)
+        obs_op = np.zeros((self.blue_agents_num, self.observation_space.shape[0] - 5), dtype=np.float32)
 
         for agent_name in ego_obs_dict.keys():
             if int(ego_obs_dict[agent_name]['DeathEvent']) != 99:
@@ -389,6 +389,11 @@ class AirCombatConEnv(object):
                 continue
             obs_agent = self.get_obs_agent(agent_name, camp='blue')
             obs_op[self.blue_ni_mapping[agent_name]] = obs_agent
+        
+        num_agents = self.red_agents_num
+        all_ids = np.eye(num_agents, dtype=np.float32)
+        obs = np.concatenate([obs, all_ids], axis=-1)
+        obs_op = np.concatenate([obs_op, all_ids], axis=-1)
 
         return obs, obs_op
 
@@ -634,27 +639,18 @@ class AirCombatConEnv(object):
             enemy_feats = self.get_obs_op(ego_x=ego_x, ego_y=ego_y, ego_z=ego_z,
                                           ego_ang_x=ego_ang_x, ego_ang_y=ego_ang_y, ego_ang_z=ego_ang_z,
                                           camp='blue')
-            agent_id_feats = np.zeros(self.red_agents_num, dtype=np.float32)
             # threat info
             # threat_info = self._oracal_guiding_feature(agent_name, camp, op_camp='blue')
         else:
             enemy_feats = self.get_obs_op(ego_x=ego_x, ego_y=ego_y, ego_z=ego_z,
                                           ego_ang_x=ego_ang_x, ego_ang_y=ego_ang_y, ego_ang_z=ego_ang_z,
                                           camp='red')
-            agent_id_feats = np.zeros(self.blue_agents_num, dtype=np.float32)
             # threat info
             # threat_info = self._oracal_guiding_feature(agent_name, camp, op_camp='red')
 
-        if self.apply_agent_ids:
-            if camp == 'red':
-                agent_id_feats[self.red_ni_mapping[agent_name]] = 1
-            else:
-                agent_id_feats[self.blue_ni_mapping[agent_name]] = 1
-
         obs_all = np.concatenate([
             ego_infos.flatten(), ctrl_state_feats.flatten(), alley_feats.flatten(),
-            enemy_feats.flatten(), agent_id_feats.flatten(),
-            # threat_info.flatten(), agent_id_feats.flatten()
+            enemy_feats.flatten(),
         ])
         return obs_all
 
