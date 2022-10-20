@@ -23,8 +23,6 @@ def save_buffer(path, obs_buffer, action_buffer, obs_next_ubffer):
     print(f"save success !!!")
 
 
-
-
 if __name__ == "__main__":
 
     # setting 0: 相对飞行

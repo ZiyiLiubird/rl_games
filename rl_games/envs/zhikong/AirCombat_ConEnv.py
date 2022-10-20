@@ -1,10 +1,8 @@
-from dis import dis
 import os
 import os.path as osp
 import sys
 
 parent_path = osp.dirname(__file__)
-# print(parent_path)
 sys.path.append(parent_path)
 
 import math
@@ -89,9 +87,12 @@ class AirCombatConEnv(object):
         self.reward_scale_rate = kwargs.get("reward_scale_rate", 20)
         self.reward_defeat = kwargs.get("reward_defeat", -1)
         self.reward_only_positive = kwargs.get("reward_only_positive", False)
-        self.max_reward = (self.reward_win + 2 * self.reward_death_value * self.blue_agents_num
-                           + 200*self.blue_agents_num+self.blue_agents_num+
-                           self.red_agents_num*self.blue_agents_num*5)
+        self.max_reward = self.reward_win +\
+                            2 * self.reward_death_value * self.blue_agents_num+\
+                               200*self.blue_agents_num +\
+                           self.blue_agents_num +\
+                           self.red_agents_num +\
+                           self.red_agents_num*self.blue_agents_num*5
 
         # death tracking
         self.red_death = np.zeros((self.red_agents_num), dtype=int)
@@ -168,7 +169,8 @@ class AirCombatConEnv(object):
         self.red_weapon_state = dict()
         for ego_agent_name in self.red_agents:
             self.red_weapon_state[ego_agent_name] = {}
-        setting = np.random.randint(0, 3)
+        # setting = np.random.randint(0, 3)
+        setting = self._episode_steps % 2
         if init:
             # print(self.dict_init)
             self.obs_dict = self.env.reset(self.dict_init[setting])
@@ -321,25 +323,22 @@ class AirCombatConEnv(object):
         infos['lose'] = np.zeros((self.red_agents_num), dtype=np.float32)
         infos['draw'] = np.zeros((self.red_agents_num), dtype=np.float32)
 
-        if not self.record:
+        if self.red_all_dead:
+            if self.reward_sparse and not self.single_agent_mode:
+                reward = -1
+            else:
+                reward += self.reward_defeat
+            infos['lose'] = np.ones((self.red_agents_num), dtype=np.float32)
+        elif self.red_all_dead and self.blue_all_dead:
+            infos['draw'] = np.ones((self.red_agents_num), dtype=np.float32)
+        if self._episode_steps >= self.episode_limit:
             if self.blue_all_dead and not self.red_all_dead:
                 if self.reward_sparse and not self.single_agent_mode:
                     reward = 1
                 else:
                     reward += self.reward_win
-                self.record = True
                 infos['win'] = np.ones((self.red_agents_num), dtype=np.float32)
-            elif self.red_all_dead:
-                if self.reward_sparse and not self.single_agent_mode:
-                    reward = -1
-                else:
-                    reward += self.reward_defeat
-                self.record = True
-                infos['lose'] = np.ones((self.red_agents_num), dtype=np.float32)
-            elif self.red_all_dead and self.blue_all_dead:
-                infos['draw'] = np.ones((self.red_agents_num), dtype=np.float32)
-                self.record = True
-        elif self._episode_steps >= self.episode_limit and not self.record:
+            else:
                 infos['draw'] = np.ones((self.red_agents_num), dtype=np.float32)
                 self.record = True
         else:
@@ -741,48 +740,30 @@ class AirCombatConEnv(object):
         self.blue_all_dead = False
         self.red_all_dead_missile = False
         self.blue_all_dead_missile = False
-        # self.red_all_dead_missile_future = False
-        # self.blue_all_dead_missile_future = False
-        # present_hitting_red = np.zeros((self.red_agents_num), dtype=np.float32)
-        # present_hitting_blue = np.zeros((self.blue_agents_num), dtype=np.float32)
-
-        # present_hitting_red_num = 0
-        # present_hitting_blue_num = 0
 
         for i, agent_name in enumerate(self.red_agents):
             if int(self.obs_dict['red'][agent_name]['DeathEvent']) != 99:
                 self.red_death[i] = 1
                 if int(self.obs_dict['red'][agent_name]['DeathEvent']) != 0:
                     self.red_death_missile[i] = 1
-            # if self.obs_dict['red'][agent_name]['IfPresenceHitting'] == 1:
-            #     present_hitting_red[i] = 1
 
         for i, agent_name in enumerate(self.blue_agents):
             if int(self.obs_dict['blue'][agent_name]['DeathEvent']) != 99:
                 self.blue_death[i] = 1
                 if int(self.obs_dict['blue'][agent_name]['DeathEvent']) != 0:
                     self.blue_death_missile[i] = 1
-            # if self.obs_dict['blue'][agent_name]['IfPresenceHitting'] == 1:
-            #     present_hitting_blue[i] = 1
-
-        # present_hitting_red_num = np.sum(present_hitting_red)
-        # present_hitting_blue_num = np.sum(present_hitting_blue)
 
         if np.sum(self.red_death) == self.red_agents_num:
             self.red_all_dead = True
-        # elif (self.red_agents_num - np.sum(self.red_death_missile)) == present_hitting_blue_num:
-        #     self.red_all_dead_missile_future = True
         if np.sum(self.blue_death) == self.blue_agents_num:
             self.blue_all_dead = True
-        # elif (self.blue_agents_num - np.sum(self.blue_death_missile)) == present_hitting_red_num:
-        #     self.blue_all_dead_missile_future = True
 
         if np.sum(self.red_death_missile) == self.red_agents_num:
             self.red_all_dead_missile = True
         if np.sum(self.blue_death_missile) == self.blue_agents_num:
             self.blue_all_dead_missile = True
 
-        return (self.red_all_dead and self.blue_all_dead)
+        return self.red_all_dead
 
     def seed(self, seed=1):
         random.seed(seed)
@@ -835,6 +816,16 @@ class AirCombatConEnv(object):
                 out_area[al_id] = 1
 
         return height, out_area
+
+    def alert_reward(self):
+        ego_alert = np.ones((self.red_agents_num), dtype=np.float32)
+        for al_id, ego_agent_name in enumerate(self.red_agents):
+            if int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
+                ego_alert[al_id] = 0
+                continue
+            if int(self.obs_dict['red'][ego_agent_name]['MissileAlert']) == 1:
+                    ego_alert[al_id] = 0
+        return ego_alert
 
     def locked_reward(self):
 
@@ -916,10 +907,13 @@ class AirCombatConEnv(object):
         locked = 0
         area = 0
         height = 0
+        missile_alert = 0
 
         locked_adv, be_locked_adv = self.locked_reward()
-        locked += np.sum(locked_adv) * 2
+        ego_alert = self.alert_reward()
+        locked += np.sum(locked_adv) * 3
         locked -= np.sum(be_locked_adv) * neg_scale
+        missile_alert += np.sum(ego_alert)
 
         height, area = self.area_reward()
         height = np.sum(height)
@@ -931,11 +925,10 @@ class AirCombatConEnv(object):
                 current_health = self.obs_dict['red'][ego_agent_name]['LifeCurrent']
                 if int(current_health) == 0 or int(self.obs_dict['red'][ego_agent_name]['DeathEvent']) != 99:
                     self.red_death[al_id] = 1
-                    if not self.reward_only_positive:
-                        delta_deaths -= self.reward_death_value * neg_scale
-                    delta_ally += neg_scale * prev_health
+                    delta_deaths -= self.reward_death_value
+                    delta_ally += prev_health
                 else:
-                    delta_ally += neg_scale * (prev_health - current_health)
+                    delta_ally += (prev_health - current_health)
 
         for e_id, op_agent_name in enumerate(self.blue_agents):
             if not self.blue_death[e_id]:
@@ -951,14 +944,21 @@ class AirCombatConEnv(object):
                 else:
                     delta_enemy += prev_health - current_health
 
-        reward = delta_enemy + delta_deaths - delta_ally + locked - (height + area) * neg_scale
-
+        reward = delta_enemy + delta_deaths + missile_alert - delta_ally + locked - height - area
+        
+        step_reward = 0.  # 最大立即回报 = 红方飞机数量 * 5
         for al_id, ego_agent_name in enumerate(self.red_agents):
+            agent_reward_list = []
+            distance_list = []
             for e_id, op_agent_name in enumerate(self.blue_agents):
                 if not self.red_death[al_id] and not self.blue_death[e_id]:
-                    th_ang, th_dis, pitch_reward = self.one_threat_index(ego_agent_name, op_agent_name)
-                    reward += 3 * (1. - th_ang) + 2 * (1. - th_dis)
-                    reward += pitch_reward
+                    threat_dict = self.one_threat_index(ego_agent_name, op_agent_name)
+                    agent_reward_list.append(3 * (1. - threat_dict['threat_ang']) +
+                                             2 * (1. - threat_dict['threat_dis']))
+                    distance_list.append(threat_dict['distance'])
+            w_list = self.calculation_tool(distance_list, mode='distance_weight')
+            step_reward += np.dot(w_list, agent_reward_list)
+        reward += step_reward
         return reward
 
     def one_threat_index(self, ego_agent_name, op_agent_name):  # 输入 红蓝双方各一架飞机名字，输出 角度威胁和速度威胁
@@ -983,7 +983,7 @@ class AirCombatConEnv(object):
                                   self.obs_dict['blue'][op_agent_name]['attitude/pitch-rad'],
                                   self.obs_dict['blue'][op_agent_name]['attitude/roll-rad'])
 
-            pitch_reward = 0
+            pitch_reward = 0.
 
             # 距离威胁
             f_param_AMRAAM_approach = self.calculation_tool([2000., 1.], [35000., 0.4], mode='function_parameters')
@@ -992,7 +992,7 @@ class AirCombatConEnv(object):
             f_param_SRAAM_avoid = self.calculation_tool([2000., 8.], [10000., 0.4], mode='function_parameters')
             # function_param mode : 'array_angle','function_parameters', 'distance_threat'
             if self._episode_steps <= 1:
-            
+
                 # try , except 此处用于初始化self.red_weapon_state， 实际上该段代码应该在reset()函数实现
                 self.red_weapon_state[ego_agent_name]['SRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['SRAAMCurrentNum']
                 self.red_weapon_state[ego_agent_name]['AMRAAMCurrentNum'] = self.obs_dict['red'][ego_agent_name]['AMRAAMCurrentNum']
@@ -1025,7 +1025,7 @@ class AirCombatConEnv(object):
             if 5 <= time_count < 10:
                 if self.red_weapon_state[ego_agent_name]['th_mode'] != 0:
                     pitch = self.obs_dict['red'][ego_agent_name]['attitude/pitch-rad']
-                    pitch_reward +=  -np.sin(pitch)
+                    pitch_reward += -np.sin(pitch)
                 if self.red_weapon_state[ego_agent_name]['th_mode'] == 1:
                     self.red_weapon_state[ego_agent_name]['func_param'] = f_param_AMRAAM_avoid
                 elif self.red_weapon_state[ego_agent_name]['th_mode'] == 2:
@@ -1057,7 +1057,7 @@ class AirCombatConEnv(object):
             dis_air = np.linalg.norm([ego_x - op_x, ego_y - op_y, ego_z - op_z])
 
             if dis_air > dis_render:
-                th_dis = 1. - (100000. - dis_air)*(1 - 0.01)/(100000. - dis_render)
+                th_dis = 1. - (100000. - dis_air) * (1 - 0.01) / (100000. - dis_render)
             elif dis_air <= dis_render and dis_render >= dis_blind:
                 th_dis = self.calculation_tool(dis_air, self.red_weapon_state[ego_agent_name]['func_param'], mode='distance_threat')
             else:
@@ -1077,10 +1077,10 @@ class AirCombatConEnv(object):
             weight_angle = 70000. / (dis_air + 100000.)  # 威胁角权重，当距离远时仅关注进攻角
             th_ang = ((1 - weight_angle) * theta_angle + weight_angle * phi_angle) / 360.
         except KeyError:
-            th_ang, th_dis = 0., 0.
-        return th_ang, th_dis, pitch_reward
+            th_ang, th_dis, pitch_reward, dis_air = 0., 0., 0., 0.
+        return {'threat_ang': th_ang, 'threat_dis': th_dis, 'pitch_reward': pitch_reward, 'distance': dis_air}
 
-    def calculation_tool(self, x, y, mode='array_angle'):  # 计算工具
+    def calculation_tool(self, x=None, y=None, mode='array_angle'):  # 计算工具
         if mode == 'array_angle':  # 输入两向量， 计算两向量夹角
             return np.arccos(x.dot(y) / (np.sqrt(x.dot(x)) * np.sqrt(y.dot(y)))) * 180. / np.pi
         elif mode == 'function_parameters':  # 输入两个点，计算一个经过两点的光滑曲线
@@ -1088,10 +1088,15 @@ class AirCombatConEnv(object):
             b = x[1] * y[1] * (x[0] - y[0]) / (y[1] - x[1])
             return np.array([a, b])
         elif mode == 'distance_threat':  # 输入距离及参数， 计算距离威胁度
-            return y[1] / (y[0] + x)
+            th_d = y[1] / (y[0] + x)
+            return th_d if th_d <= 1. else 1.
+        elif mode == 'distance_weight':
+            w_list = [sum(x) / dis_ for dis_ in x]
+            w_sum = sum(w_list)
+            w = np.array([wi_ / w_sum for wi_ in w_list])
+            return w
         else:
             print('Error in calculation_tool !! ')
-            return None
 
     def array_angle(self, x, y):  # 计算两向量夹角
         return np.arccos(x.dot(y) / (np.sqrt(x.dot(x)) * np.sqrt(y.dot(y)))) * 180. / np.pi
@@ -1140,14 +1145,14 @@ class AirCombatConEnv(object):
 
         x = float(k * (ref_cos_lat * sin_lat - ref_sin_lat * cos_lat * cos_d_lon) * CONSTANTS_RADIUS_OF_EARTH)
         y = float(k * cos_lat * math.sin(lon_rad - ref_lon_rad) * CONSTANTS_RADIUS_OF_EARTH)
-        z = float(0. - ft_to_m * height)
+        z = float(0. - ft_to_m * height )
 
         return x, y, z
 
     def Euler_to_xyz(self, yaw, pitch, roll):
         # 注意输入顺序和单位  :  yaw-航向角-角度    pitch-俯仰角-弧度    roll-翻滚角-弧度
         # 飞机朝向仅与偏航角、俯仰角有关 与翻滚角无关
-        x = np.cos(yaw * np.pi / 180.)
-        y = np.sin(yaw * np.pi / 180.)
+        x = np.cos(pitch) * np.cos(yaw * np.pi / 180.)
+        y = np.cos(pitch) * np.sin(yaw * np.pi / 180.)
         z = -np.sin(pitch) + 0. * roll
         return x, y, z
