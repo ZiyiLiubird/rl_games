@@ -177,28 +177,38 @@ class AirCombatConEnv(object):
         else:
             reset_settng = self.dict_reset[setting]
 
-        # random set height, lat, lon, psi
-        for red_id in self.red_agents:
-            height = random.uniform(a=13000, b=30000)
-            lat = random.uniform(a=-0.3, b=0.3)
-            lon = random.uniform(-0.14, 0.14)
-            psi = random.uniform(-90, 90)
-            reset_settng['red'][red_id]['ic/h-sl-ft'] = height
-            reset_settng['red'][red_id]['ic/lat-geod-deg'] = lat
-            reset_settng['red'][red_id]['ic/long-gc-deg'] = lon
-            reset_settng['red'][red_id]['ic/psi-true-deg'] = psi
-
         for blue_id in self.blue_agents:
-            height = random.uniform(a=13000, b=30000)
-            lat = random.uniform(a=-0.3, b=0.3)
+            height = random.uniform(a=23000, b=30000)
+            lat = random.uniform(a=-0.2, b=0.2)
             lon = random.uniform(-0.14, 0.14)
-            psi = random.uniform(-90, 90)
+            psi = random.uniform(0, 90)
             reset_settng['blue'][blue_id]['ic/h-sl-ft'] = height
             reset_settng['blue'][blue_id]['ic/lat-geod-deg'] = lat
             reset_settng['blue'][blue_id]['ic/long-gc-deg'] = lon
             reset_settng['blue'][blue_id]['ic/psi-true-deg'] = psi
 
+        # random set height, lat, lon, psi
+        for red_id in self.red_agents:
+            height = random.uniform(a=23000, b=30000)
+            lat = random.uniform(a=-0.2, b=0.2)
+            lon = random.uniform(-0.14, 0.14)
+            psi = random.uniform(0, 90)
+            reset_settng['red'][red_id]['ic/h-sl-ft'] = height
+            reset_settng['red'][red_id]['ic/lat-geod-deg'] = lat
+            reset_settng['red'][red_id]['ic/long-gc-deg'] = lon
+            reset_settng['red'][red_id]['ic/psi-true-deg'] = psi
+
         self.obs_dict = self.env.reset(reset_settng)
+        
+        for agent_name in self.red_agents:
+            if int(self.obs_dict['red'][agent_name]['DeathEvent']) != 99:
+                print(f"Reset Dead !!!, shuting down...")
+                1/0
+        for agent_name in self.blue_agents:
+            if int(self.obs_dict['blue'][agent_name]['DeathEvent']) != 99:
+                print(f"Reset Dead !!!, shuting down...")
+                1/0
+        
         self.prev_obs_dict = None
         obs, obs_op = self.get_obs()
         obs_dict = {}

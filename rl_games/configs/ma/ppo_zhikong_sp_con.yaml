@@ -80,7 +80,7 @@ params:
       ip: '127.0.1.1'
       worker_index: 888
       config_path: 'rl_games/configs/ma/ppo_zhikong_sp_con.yaml'
-      excute_path: '/home/lzy/lzy/human-ai/Air/10-13/Linux/Mono/Linux/ZK.x86_64'
+      excute_path: '/home/lzy/lzy/human-ai/Air/10-23/Linux/Mono/Linux/ZK.x86_64'
       playmode: 1
       setting: 0
       num_agents: 10
@@ -124,5 +124,5 @@ params:
     determenistic: True
     device: 'cpu'
     num_agents: 2
-    op_load_path: '/home/lzy/lzy/MARL/self-play/models/5v5/10-21/zhikong_con.pth'
+    op_load_path: '/home/lzy/lzy/MARL/self-play/models/5v5/10-23/last_zhikong_con_ep_650_rew_-2.1538913.pth'
     # '/home/lzy/lzy/MARL/self-play/models/10-13/last_zhikong_con_ep_9210_rew_58.616863.pth'
